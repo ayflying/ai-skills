@@ -1,12 +1,7 @@
-# dingtalk-agent
-
-```yaml
+---
 name: dingtalk-agent
-description: |
-  钉钉机器人集成 OpenCode AI。通过钉钉发送任务消息，AI 执行完成后结果推回钉钉。
-  支持群聊共享上下文和用户独立模式开关，适合团队协作开发。
-  必须调用此技能来处理钉钉机器人的启动和配置。
-```
+description: 钉钉机器人集成 OpenCode AI，支持群聊共享上下文和用户独立模式开关
+---
 
 ## 功能说明
 此技能提供以下功能：
@@ -23,10 +18,10 @@ description: |
 ```
 
 ### 配置说明
-在 `main.go` 中配置：
-- `ClientID`: 钉钉应用 Client ID
-- `ClientSecret`: 钉钉应用 Client Secret
-- `Model`: 默认模型配置为 `opencode/minimax-m2.5-free` (MiniMax M2.5 Free)
+在 `.env` 文件中配置：
+- `CLIENT_ID`: 钉钉应用 Client ID
+- `CLIENT_SECRET`: 钉钉应用 Client Secret
+- `CURRENT_MODEL`: 默认模型配置为 `opencode/minimax-m2.5-free` (MiniMax M2.5 Free)
 - `Stream Mode`: 使用 JSON 流式输出格式，实时返回 AI 响应
 
 ### 命令格式
