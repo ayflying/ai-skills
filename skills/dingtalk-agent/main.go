@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
@@ -20,7 +22,7 @@ import (
 const (
 	ClientID          = "dingdyjw7dykkua9x0he"
 	ClientSecret      = "_IPx3Em72K6os2nQiFq6O4VGSEUcjJu-hlZihSnI5oawj1xI1WB_DP-5ZXjXykRq"
-	TimeoutDuration   = 1 * time.Hour
+	TimeoutDuration   = 1 * time.Minute // 改为 1 分钟超时，符合用户专注模式需求
 	CurrentModel      = "opencode/minimax-m2.5-free"
 	SessionsFile      = "sessions.json"       // 用户模式开关文件
 	GroupContextsFile = "group_contexts.json" // 群组共享上下文文件
@@ -47,7 +49,7 @@ var (
 
 // --- 持久化逻辑 ---
 
-func saveUserSessions() {
+func saveUserSessionsSync() {
 	userSessionsMu.RLock()
 	defer userSessionsMu.RUnlock()
 	data, err := json.MarshalIndent(userSessions, "", "  ")
@@ -58,6 +60,10 @@ func saveUserSessions() {
 	if err := os.WriteFile(SessionsFile, data, 0644); err != nil {
 		logToFile(fmt.Sprintf("ERROR: Failed to write user sessions file: %v", err))
 	}
+}
+
+func saveUserSessions() {
+	saveUserSessionsSync()
 }
 
 func loadUserSessions() {
@@ -174,7 +180,7 @@ func callOpenCode(ctx context.Context, sessionWebhook string, prompt string, gro
 	logToFile(fmt.Sprintf("DEBUG: callOpenCode started for prompt: %s, groupSessionID: %s", prompt, *groupSessionID))
 
 	opencodePath := `D:\Users\ay\AppData\Local\OpenCode\opencode-cli.exe`
-	args := []string{"run", "--attach", "http://127.0.0.1:9090", "--model", CurrentModel, "--format", "json"}
+	args := []string{"run", "--attach", "http://127.0.0.1:9091", "--model", CurrentModel, "--format", "json"}
 
 	if *groupSessionID != "" {
 		args = append(args, "-s", *groupSessionID)
@@ -352,12 +358,15 @@ func OnChatBotMessageReceived(ctx context.Context, data *chatbot.BotCallbackData
 	logToFile(fmt.Sprintf("收到原始: '%s' (用户: %s, 群组: %s)", content, userKey, groupKey))
 	logToFile(fmt.Sprintf("DEBUG: ConversationType: %s, SenderId: %s", data.ConversationType, data.SenderId))
 
-	// 清理过期会话
-	cleanupExpiredSessions()
-
 	// 获取用户模式状态
 	userSession := getUserSession(userKey)
 	userSession.LastActiveTime = time.Now()
+
+	logToFile(fmt.Sprintf("DEBUG: User %s current mode: %v", userKey, userSession.IsInOpenCodeMode))
+
+	// 启用清理逻辑，实现 1 分钟自动退出专注模式
+	cleanupExpiredSessions()
+
 	go saveUserSessions()
 
 	// 获取群组共享的 OpenCode SessionID
@@ -374,10 +383,39 @@ func OnChatBotMessageReceived(ctx context.Context, data *chatbot.BotCallbackData
 		cmd := parts[0]
 		switch cmd {
 		case "/help":
-			reply := "可用命令:\n/help\n/opencode <任务> - 进入OpenCode模式\n/exit - 退出OpenCode模式\n/status - 查看状态"
+			reply := "可用命令:\n/help\n/opencode <任务> - 进入OpenCode模式\n/jimeng <提示词> - 创建即梦AI图片生成任务\n/exit - 退出OpenCode模式\n/status - 查看状态"
 			chatbotReplier := chatbot.NewChatbotReplier()
 			chatbotReplier.SimpleReplyText(ctx, data.SessionWebhook, []byte(reply))
 			return []byte(""), nil
+		case "/jimeng":
+			if len(parts) > 1 {
+				prompt := parts[1]
+				taskID := fmt.Sprintf("dt_%d", time.Now().Unix())
+
+				// 调用 Python 任务服务器
+				go func(p, tid string, webHook string) {
+					taskData := map[string]string{
+						"id":     tid,
+						"prompt": p,
+					}
+					jsonData, _ := json.Marshal(taskData)
+					resp, err := http.Post("http://127.0.0.1:18542/add_task", "application/json", bytes.NewBuffer(jsonData))
+
+					if err != nil || resp.StatusCode != 200 {
+						logToFile(fmt.Sprintf("ERROR: Failed to add jimeng task: %v", err))
+						chatbotReplier := chatbot.NewChatbotReplier()
+						chatbotReplier.SimpleReplyText(ctx, webHook, []byte("❌ 任务创建失败，请确保即梦服务器正在运行"))
+					} else {
+						msg := fmt.Sprintf("✅ 任务已排队\nID: %s\n正在生成中，请稍候...", tid)
+						sendMarkdown(ctx, webHook, "即梦AI任务", msg)
+					}
+				}(prompt, taskID, data.SessionWebhook)
+				return []byte(""), nil
+			} else {
+				chatbotReplier := chatbot.NewChatbotReplier()
+				chatbotReplier.SimpleReplyText(ctx, data.SessionWebhook, []byte("请输入提示词，例如: /jimeng 可爱的猫咪"))
+				return []byte(""), nil
+			}
 		case "/status":
 			modeStatus := "普通模式"
 			if userSession.IsInOpenCodeMode {
@@ -389,7 +427,8 @@ func OnChatBotMessageReceived(ctx context.Context, data *chatbot.BotCallbackData
 			return []byte(""), nil
 		case "/opencode":
 			userSession.IsInOpenCodeMode = true
-			go saveUserSessions()
+			saveUserSessionsSync() // 关键：同步保存
+			logToFile(fmt.Sprintf("DEBUG: User %s switched to OpenCode mode", userKey))
 			if len(parts) > 1 {
 				modelInfo := fmt.Sprintf("### 🤖 已进入OpenCode模式\n\n- **当前模型**: `%s`\n- **群组**: `%s`\n\n开始执行任务...", CurrentModel, groupKey)
 				sendMarkdown(ctx, data.SessionWebhook, "进入OpenCode模式", modelInfo)
@@ -428,6 +467,16 @@ func OnChatBotMessageReceived(ctx context.Context, data *chatbot.BotCallbackData
 		}
 	} else {
 		// 非命令消息
+		if !userSession.IsInOpenCodeMode {
+			// 自动进入专注模式
+			userSession.IsInOpenCodeMode = true
+			saveUserSessionsSync()
+			logToFile(fmt.Sprintf("DEBUG: User %s auto-entered Focus Mode", userKey))
+
+			modeInfo := fmt.Sprintf("### 🤖 已自动进入专注模式 (1分钟有效)\n\n后续发送消息将直接执行任务，发送 `/exit` 退出。")
+			sendMarkdown(ctx, data.SessionWebhook, "专注模式", modeInfo)
+		}
+
 		if userSession.IsInOpenCodeMode {
 			sendMarkdown(ctx, data.SessionWebhook, "任务执行", "### 🤖 开始执行任务...")
 
@@ -446,12 +495,9 @@ func OnChatBotMessageReceived(ctx context.Context, data *chatbot.BotCallbackData
 				saveGroupContexts()
 			}()
 			return []byte(""), nil
-		} else {
-			chatbotReplier := chatbot.NewChatbotReplier()
-			chatbotReplier.SimpleReplyText(ctx, data.SessionWebhook, []byte("我收到了: "+content))
-			return []byte(""), nil
 		}
 	}
+	return []byte(""), nil
 }
 
 type simpleLogger struct{}
@@ -475,6 +521,7 @@ func (l *simpleLogger) Fatalf(format string, args ...interface{}) {
 }
 
 func main() {
+	instanceID := time.Now().Format("20060102-150405")
 	// 清空旧日志，方便调试
 	f, _ := os.Create("chat.log")
 	f.Close()
@@ -497,8 +544,8 @@ func main() {
 	// 注册聊天机器人回调
 	cli.RegisterChatBotCallbackRouter(OnChatBotMessageReceived)
 
-	fmt.Println("Agent started")
-	logToFile("Agent started")
+	fmt.Printf("Agent started (ID: %s)\n", instanceID)
+	logToFile(fmt.Sprintf("Agent started (ID: %s)", instanceID))
 
 	// 错误处理：确保程序不会静默退出
 	err := cli.Start(context.Background())
