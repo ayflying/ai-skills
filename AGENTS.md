@@ -84,27 +84,6 @@ npx skills add ayflying/ai-skills --list
 - **常量**: SCREAMING_SNAKE_CASE (导出) 或 camelCase (未导出)
 - **结构体**: PascalCase
 
-**示例**:
-```go
-// 包名
-package main
-
-// 导出结构体 (PascalCase)
-type UserSession struct {
-    IsInOpenCodeMode bool      `json:"is_in_opencode_mode"`
-    LastActiveTime   time.Time `json:"last_active_time"`
-}
-
-// 未导出变量 (camelCase)
-var userSessions map[string]*UserSession
-
-// 导出函数 (PascalCase)
-func LoadConfig() {}
-
-// 未导出函数 (camelCase)
-func loadConfig() {}
-```
-
 **类型提示**:
 - Go 是静态类型语言，必须显式声明类型
 - 使用具体类型而非 `interface{}` 除非必要
@@ -115,38 +94,10 @@ func loadConfig() {}
 - 使用 `if err != nil` 模式
 - 错误信息使用英文，日志可以使用中文
 
-```go
-file, err := os.Open(envFile)
-if err != nil {
-    fmt.Printf("警告: 无法打开 %s 文件: %v\n", envFile, err)
-    return
-}
-defer file.Close()
-```
-
 **导入规范**:
 - 标准库在前，第三方库在后
 - 使用分组导入，标准库和第三方库分开
 - 按字母顺序排序
-
-```go
-import (
-    "bufio"
-    "context"
-    "encoding/json"
-    "fmt"
-    "os"
-    "os/exec"
-    "regexp"
-    "strings"
-    "sync"
-    "time"
-
-    "github.com/open-dingtalk/dingtalk-stream-sdk-go/chatbot"
-    "github.com/open-dingtalk/dingtalk-stream-sdk-go/client"
-    "github.com/open-dingtalk/dingtalk-stream-sdk-go/logger"
-)
-```
 
 **格式化**:
 - 使用 `go fmt` 自动格式化
@@ -157,13 +108,6 @@ import (
 - 导出函数/类型必须有注释
 - 注释以函数名开头
 - 使用英文注释
-
-```go
-// LoadConfig loads configuration from .env file and environment variables
-func LoadConfig() {
-    // Implementation
-}
-```
 
 ### 3.2 配置管理
 
@@ -177,14 +121,6 @@ func LoadConfig() {
 - 提供默认值
 - 支持环境变量覆盖
 
-```go
-var (
-    ClientID     string
-    ClientSecret string
-    CurrentModel string
-)
-```
-
 ### 3.3 测试规范
 
 **测试文件**:
@@ -195,24 +131,6 @@ var (
 - 函数名: `TestXxx`
 - 参数: `*testing.T`
 - 使用 `t.Errorf` 报告错误
-
-```go
-func TestParseCommand(t *testing.T) {
-    testCases := []struct {
-        input    string
-        expected string
-    }{
-        {"  /help  ", "/help"},
-    }
-
-    for _, tc := range testCases {
-        // 测试逻辑
-        if result != tc.expected {
-            t.Errorf("输入 '%s': 期望 '%s', 得到 '%s'", tc.input, tc.expected, result)
-        }
-    }
-}
-```
 
 **测试最佳实践**:
 - 使用表驱动测试 (Table-Driven Tests)
@@ -261,23 +179,6 @@ defer file.Close()
 - 使用 `sync.RWMutex` 读多写少场景
 - 使用 `sync.Map` 高并发场景
 
-```go
-var (
-    userSessions   = make(map[string]*UserSession)
-    userSessionsMu sync.RWMutex
-)
-
-// 读操作
-userSessionsMu.RLock()
-session := userSessions[userID]
-userSessionsMu.RUnlock()
-
-// 写操作
-userSessionsMu.Lock()
-userSessions[userID] = session
-userSessionsMu.Unlock()
-```
-
 ---
 
 ## 4. 项目结构规范
@@ -322,10 +223,6 @@ description: 技能描述
 ---
 ```
 
-**可选字段**:
-- `allowed_tools`: 允许使用的工具列表
-- `metadata`: 元数据信息
-
 ---
 
 ## 5. Git 工作流
@@ -347,15 +244,6 @@ description: 技能描述
 - `refactor`: 重构
 - `test`: 测试相关
 - `chore`: 构建/工具相关
-
-**示例**:
-```
-feat: 支持从 .env 文件读取配置
-
-- 添加 loadConfig() 函数
-- 创建 .env.example 模板
-- 更新文档说明
-```
 
 ### 5.2 分支管理
 
