@@ -13,15 +13,27 @@
 
 ## 安装
 
-### 前置要求
+### 标准化安装（推荐）
+
+使用 `skills` CLI 安装：
+
+```bash
+npx skills add ayflying/ai-skills --skill dingtalk-agent
+```
+
+安装后会自动创建技能目录并链接到你的 Agent。
+
+### 手动安装
+
+#### 前置要求
 
 - Go 1.16 或更高版本
 - 钉钉企业应用（需开启 Stream 模式）
 - OpenCode 服务器（运行在端口 9090）
 
-### 安装步骤
+#### 安装步骤
 
-#### 1. 克隆仓库
+##### 1. 克隆仓库
 
 ```bash
 git clone https://github.com/ayflying/ai-skills.git
