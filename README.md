@@ -6,7 +6,7 @@
 
 | 技能名称 | 描述 | 路径 |
 |----------|------|------|
-| dingtalk-agent | 钉钉机器人集成 OpenCode AI | `skills/dingtalk-agent/` |
+| [dingtalk-agent](skills/dingtalk-agent/README.md) | 钉钉机器人集成 OpenCode AI | `skills/dingtalk-agent/` |
 
 ## 使用方式
 
