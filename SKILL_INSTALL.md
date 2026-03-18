@@ -2,7 +2,7 @@
 
 ## 概述
 
-本仓库遵循 [Agent Skills 规范](https://agentskills.io)，支持使用 `skills` CLI 进行标准化安装。
+这是我编写的 AI 技能集合仓库，遵循 [Agent Skills 规范](https://agentskills.io)，支持使用 `skills` CLI 进行标准化安装。
 
 ## 快速开始
 
