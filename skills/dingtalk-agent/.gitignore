@@ -22,6 +22,9 @@ sessions.json
 group_contexts.json
 chat.log
 
+# Environment variables (包含敏感配置)
+.env
+
 # Build output
 dingtalk-agent.exe
 

@@ -17,14 +17,85 @@ import (
 	"github.com/open-dingtalk/dingtalk-stream-sdk-go/logger"
 )
 
+// 配置变量
+var (
+	ClientID     string
+	ClientSecret string
+	CurrentModel string
+)
+
 const (
-	ClientID          = "dingdyjw7dykkua9x0he"
-	ClientSecret      = "_IPx3Em72K6os2nQiFq6O4VGSEUcjJu-hlZihSnI5oawj1xI1WB_DP-5ZXjXykRq"
 	TimeoutDuration   = 1 * time.Hour
-	CurrentModel      = "opencode/minimax-m2.5-free"
 	SessionsFile      = "sessions.json"       // 用户模式开关文件
 	GroupContextsFile = "group_contexts.json" // 群组共享上下文文件
 )
+
+// 从 .env 文件加载配置
+func loadConfig() {
+	// 设置默认值
+	ClientID = ""
+	ClientSecret = ""
+	CurrentModel = "opencode/minimax-m2.5-free"
+
+	// 读取 .env 文件
+	envFile := ".env"
+	file, err := os.Open(envFile)
+	if err != nil {
+		fmt.Printf("警告: 无法打开 %s 文件: %v\n", envFile, err)
+		fmt.Println("使用默认配置或环境变量")
+		return
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		// 跳过空行和注释
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// 解析 KEY=VALUE 格式
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		// 移除可能的引号
+		if len(value) >= 2 {
+			if (value[0] == '"' && value[len(value)-1] == '"') ||
+				(value[0] == '\'' && value[len(value)-1] == '\'') {
+				value = value[1 : len(value)-1]
+			}
+		}
+
+		switch key {
+		case "CLIENT_ID":
+			ClientID = value
+		case "CLIENT_SECRET":
+			ClientSecret = value
+		case "CURRENT_MODEL":
+			CurrentModel = value
+		}
+	}
+
+	// 如果 .env 中没有配置，尝试从环境变量读取
+	if ClientID == "" {
+		ClientID = os.Getenv("DINGTALK_CLIENT_ID")
+	}
+	if ClientSecret == "" {
+		ClientSecret = os.Getenv("DINGTALK_CLIENT_SECRET")
+	}
+	if CurrentModel == "" {
+		CurrentModel = os.Getenv("OPENCODE_MODEL")
+		if CurrentModel == "" {
+			CurrentModel = "opencode/minimax-m2.5-free"
+		}
+	}
+}
 
 // 用户会话状态 (仅存储模式开关)
 type UserSession struct {
@@ -470,6 +541,21 @@ func (l *simpleLogger) Fatalf(format string, args ...interface{}) {
 }
 
 func main() {
+	// 加载配置
+	loadConfig()
+
+	// 检查必需的配置
+	if ClientID == "" || ClientSecret == "" {
+		fmt.Println("错误: 请配置钉钉应用的 Client ID 和 Client Secret")
+		fmt.Println("请在 .env 文件中配置:")
+		fmt.Println("  CLIENT_ID=your-client-id")
+		fmt.Println("  CLIENT_SECRET=your-client-secret")
+		fmt.Println("或者设置环境变量:")
+		fmt.Println("  DINGTALK_CLIENT_ID=your-client-id")
+		fmt.Println("  DINGTALK_CLIENT_SECRET=your-client-secret")
+		os.Exit(1)
+	}
+
 	// 清空旧日志，方便调试
 	f, _ := os.Create("chat.log")
 	f.Close()

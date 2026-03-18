@@ -36,14 +36,21 @@ go mod tidy
 
 #### 3. 配置钉钉应用
 
-在 `main.go` 中配置以下参数：
+复制 `.env.example` 文件为 `.env` 并填写配置：
 
-```go
-const (
-    ClientID     = "your-client-id"      // 钉钉应用 Client ID
-    ClientSecret = "your-client-secret"  // 钉钉应用 Client Secret
-    CurrentModel = "opencode/minimax-m2.5-free"  // 默认模型
-)
+```bash
+cp .env.example .env
+```
+
+编辑 `.env` 文件：
+
+```env
+# 钉钉应用配置
+CLIENT_ID=your-client-id
+CLIENT_SECRET=your-client-secret
+
+# OpenCode 模型配置（可选）
+CURRENT_MODEL=opencode/minimax-m2.5-free
 ```
 
 **如何获取 Client ID 和 Client Secret：**
@@ -111,16 +118,35 @@ dingtalk-agent/
 ├── SKILL.md                # 技能文档
 ├── README.md               # 本文件
 ├── .gitignore              # Git 忽略文件
+├── .env.example            # 环境变量配置模板
+├── .env                    # 环境变量配置（自动生成，忽略）
 ├── sessions.json           # 用户模式开关（自动生成，忽略）
 ├── group_contexts.json     # 群组共享上下文（自动生成，忽略）
 ├── chat.log                # 运行日志（自动生成，忽略）
 └── dingtalk-agent.exe      # 编译后的可执行文件（忽略）
 ```
 
-## 环境变量
+## 配置说明
+
+### 从 .env 文件读取
+
+技能会自动从 `.env` 文件读取以下配置：
+
+| 变量名 | 说明 | 默认值 | 是否必填 |
+|--------|------|--------|----------|
+| CLIENT_ID | 钉钉应用 Client ID | 无 | ✅ 是 |
+| CLIENT_SECRET | 钉钉应用 Client Secret | 无 | ✅ 是 |
+| CURRENT_MODEL | OpenCode 模型 | opencode/minimax-m2.5-free | 否 |
+
+### 环境变量
+
+也可以通过环境变量配置：
 
 | 变量名 | 说明 | 是否必填 |
 |--------|------|----------|
+| DINGTALK_CLIENT_ID | 钉钉应用 Client ID | ✅ 是 |
+| DINGTALK_CLIENT_SECRET | 钉钉应用 Client Secret | ✅ 是 |
+| OPENCODE_MODEL | OpenCode 模型 | 否 |
 | OPENCODE_SERVER_PASSWORD | OpenCode 服务器密码 | 否 |
 
 ## 注意事项
