@@ -1,0 +1,135 @@
+# DingTalk Agent
+
+一个集成钉钉机器人的 OpenCode AI 技能，支持群聊共享上下文和用户独立模式开关，适合团队协作开发。
+
+## 功能特性
+
+- **钉钉群聊机器人集成**：通过 `@机器人` 发送任务消息
+- **OpenCode AI 执行**：AI 执行任务并将结果推回钉钉群
+- **群聊共享上下文**：群组成员共享同一个对话上下文
+- **用户独立模式**：每个用户的模式开关独立控制
+- **消息去重**：避免钉钉重试导致重复执行
+- **异步处理**：避免钉钉超时重试
+
+## 快速开始
+
+### 1. 安装依赖
+
+```bash
+go mod tidy
+```
+
+### 2. 配置环境变量
+
+在 `main.go` 中配置以下参数：
+
+```go
+const (
+    ClientID     = "your-client-id"      // 钉钉应用 Client ID
+    ClientSecret = "your-client-secret"  // 钉钉应用 Client Secret
+    CurrentModel = "opencode/minimax-m2.5-free"  // 默认模型
+)
+```
+
+### 3. 编译运行
+
+```bash
+go build -o dingtalk-agent.exe main.go
+./dingtalk-agent.exe
+```
+
+## 使用方式
+
+### 基本命令
+
+在钉钉群中发送以下命令：
+
+| 命令 | 说明 |
+|------|------|
+| `/help` | 显示帮助 |
+| `/status` | 查看当前模式和状态 |
+| `/opencode <任务>` | 进入 OpenCode 模式并执行任务 |
+| `/exit` | 退出 OpenCode 模式 |
+| 任意消息 | 在 OpenCode 模式下会自动执行任务 |
+
+### OpenCode 模式说明
+
+1. 发送 `/opencode` 进入 OpenCode 模式
+2. 之后发送的任何消息都会被当作 OpenCode 任务执行
+3. 发送 `/exit` 退出 OpenCode 模式
+4. 1小时无消息自动退出 OpenCode 模式
+
+**群聊与私聊模式区别**：
+- **群聊**：所有群成员共享同一个对话上下文，但每个用户的模式开关独立
+- **私聊**：每个用户完全独立，上下文和模式开关均独立
+
+## 文件结构
+
+```
+dingtalk-agent/
+├── main.go                 # Go 主程序
+├── main_test.go            # Go 单元测试
+├── go.mod                  # Go 模块定义
+├── go.sum                  # Go 依赖锁定
+├── SKILL.md                # 技能文档
+├── README.md               # 本文件
+├── .gitignore              # Git 忽略文件
+├── sessions.json           # 用户模式开关（自动生成，忽略）
+├── group_contexts.json     # 群组共享上下文（自动生成，忽略）
+├── chat.log                # 运行日志（自动生成，忽略）
+└── dingtalk-agent.exe      # 编译后的可执行文件（忽略）
+```
+
+## 环境变量
+
+| 变量名 | 说明 | 是否必填 |
+|--------|------|----------|
+| OPENCODE_SERVER_PASSWORD | OpenCode 服务器密码 | 否 |
+
+## 注意事项
+
+1. 确保 OpenCode 服务器正在运行（端口 9090）
+2. 钉钉应用需开启 Stream 模式
+3. 需配置正确的 Client ID 和 Client Secret
+4. 群聊中多个用户同时使用时，共享同一个 OpenCode 对话上下文
+5. 重启机器人后，会自动加载上次的会话状态（需确保 `sessions.json` 和 `group_contexts.json` 文件存在）
+6. 消息去重机制会忽略 10 分钟内重复的消息 ID，避免钉钉重试导致重复执行
+
+## 技术实现
+
+- 使用 WebSocket 长连接接收钉钉消息
+- 调用钉钉 SDK 的 `SimpleReplyMarkdown` 方法发送富文本回复
+- 通过 `opencode-cli.exe` 执行 OpenCode 任务
+- 使用 JSON 流式输出格式，实时返回 AI 响应
+- 支持消息去重（基于 `MsgId`），避免钉钉重试导致重复执行
+- 异步任务处理，避免钉钉超时重试
+
+## 开发
+
+### 运行测试
+
+```bash
+go test -v
+```
+
+### 构建
+
+```bash
+go build -o dingtalk-agent.exe main.go
+```
+
+## GitHub 仓库
+
+本技能的代码托管在 GitHub：https://github.com/yunloli/dingtalk-agent
+
+### 如何贡献
+
+1. Fork 本仓库
+2. 创建你的特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交你的更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+## 许可证
+
+MIT License

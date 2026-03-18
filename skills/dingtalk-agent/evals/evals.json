@@ -1,0 +1,23 @@
+{
+  "skill_name": "dingtalk-agent",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "启动钉钉机器人",
+      "expected_output": "机器人启动成功并连接到钉钉服务器",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "配置钉钉机器人 Client ID 和 Secret",
+      "expected_output": "配置文件已更新",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "在钉钉群发送 /help 命令",
+      "expected_output": "返回帮助信息",
+      "files": []
+    }
+  ]
+}
