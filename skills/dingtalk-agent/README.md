@@ -11,15 +11,30 @@
 - **消息去重**：避免钉钉重试导致重复执行
 - **异步处理**：避免钉钉超时重试
 
-## 快速开始
+## 安装
 
-### 1. 安装依赖
+### 前置要求
+
+- Go 1.16 或更高版本
+- 钉钉企业应用（需开启 Stream 模式）
+- OpenCode 服务器（运行在端口 9090）
+
+### 安装步骤
+
+#### 1. 克隆仓库
+
+```bash
+git clone https://github.com/ayflying/ai-skills.git
+cd ai-skills/skills/dingtalk-agent
+```
+
+#### 2. 安装依赖
 
 ```bash
 go mod tidy
 ```
 
-### 2. 配置环境变量
+#### 3. 配置钉钉应用
 
 在 `main.go` 中配置以下参数：
 
@@ -31,12 +46,34 @@ const (
 )
 ```
 
-### 3. 编译运行
+**如何获取 Client ID 和 Client Secret：**
+
+1. 登录钉钉开放平台：https://open.dingtalk.com
+2. 进入"应用开发" → "企业内部应用"
+3. 创建或选择你的应用
+4. 在"应用信息"中查看 `Client ID` 和 `Client Secret`
+5. 在"权限管理"中开通"Stream模式"
+
+#### 4. 配置 OpenCode 服务器
+
+确保 OpenCode 服务器正在运行：
 
 ```bash
+# 启动 OpenCode 服务器（端口 9090）
+opencode serve
+```
+
+#### 5. 编译运行
+
+```bash
+# 编译
 go build -o dingtalk-agent.exe main.go
+
+# 运行
 ./dingtalk-agent.exe
 ```
+
+
 
 ## 使用方式
 
