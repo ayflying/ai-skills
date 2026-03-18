@@ -2,28 +2,35 @@
 
 一个收集各种 AI 技能的仓库，包含多个独立的技能模块。遵循 [Agent Skills 规范](https://agentskills.io)，支持使用 `skills` CLI 进行标准化安装。
 
+## 快速安装
+
+### 安装 dingtalk-agent 技能
+
+```bash
+npx skills add ayflying/ai-skills --skill dingtalk-agent
+```
+
+### 安装所有技能
+
+```bash
+npx skills add ayflying/ai-skills
+```
+
+### 列出可用技能
+
+```bash
+npx skills add ayflying/ai-skills --list
+```
+
 ## 技能列表
 
 | 技能名称 | 描述 | 路径 |
 |----------|------|------|
 | [dingtalk-agent](skills/dingtalk-agent/README.md) | 钉钉机器人集成 OpenCode AI | `skills/dingtalk-agent/` |
 
-## 标准化安装
+## 详细安装说明
 
-使用 `skills` CLI 安装技能：
-
-```bash
-# 安装所有技能
-npx skills add ayflying/ai-skills
-
-# 安装特定技能
-npx skills add ayflying/ai-skills --skill dingtalk-agent
-
-# 列出可用技能
-npx skills add ayflying/ai-skills --list
-```
-
-详细说明请查看 [SKILL_INSTALL.md](SKILL_INSTALL.md)
+请查看 [SKILL_INSTALL.md](SKILL_INSTALL.md) 获取详细的安装步骤和配置指南。
 
 ## 使用方式
 
