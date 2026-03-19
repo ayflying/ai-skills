@@ -9,7 +9,7 @@ description: 通用的 Casdoor SSO/IAM 集成指南。包含跨语言 OAuth2/OID
 
 ## 核心集成模式
 - **手动 OAuth2 模式 (强烈推荐)**: 避开 Passport 等自动化插件的黑盒逻辑，通过 `axios` 手动交换 Token，稳定性最高。
-- **用户与组织同步**: 支持自动同步 Casdoor 的 User, Group 和 Organization 到本地 DB。
+- **用户组与权限同步 (深度集成)**: 将 Casdoor 的组织架构映射为系统内部角色。参见 [权限映射指南](references/group-mapping.md)。
 
 ## 实战避坑指南 (必读)
 1. **Session 存储冲突**: 解决“由于尚未登录而无法保存 OAuth State”导致的系统崩溃。参见 [Session 避坑参考](references/session-pitfalls.md)。
