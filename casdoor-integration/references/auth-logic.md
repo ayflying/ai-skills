@@ -1,20 +1,22 @@
 # Casdoor 认证逻辑与 Session 稳定性指南
 
-## 1. 登录流实现 (手动模式)
-不建议使用全自动 Passport 插件，推荐手动控制以获得最佳日志和稳定性：
-- **跳转**: `GET <ENDPOINT>/login/oauth/authorize?...&state=<STATE>`
-- **回调**: 
+此文档描述了在任何后端系统（无论使用何种语言或框架）中实现稳定 Casdoor 对接的通用逻辑。
+
+## 1. 登录流实现模式 (手动模式)
+推荐使用手动构建请求而非全自动 SDK 插件，以确保对流程的完全控制：
+- **第一步 (跳转)**: 引导用户访问 `GET <CASDOOR_ENDPOINT>/login/oauth/authorize`，必须显式传递 `state` 参数以防止 CSRF 攻击。
+- **第二步 (回调)**: 
   1. 接收 `code` 和 `state`。
-  2. POST `access_token` 端点获取令牌。
-  3. 调用 `/api/get-account` 获取详细 User 对象。
+  2. 以后端身份向 Token 端点发起 POST 请求交换 `access_token`。
+  3. 调用 Casdoor 接口获取标准化用户信息。
 
-## 2. 核心 Bug 修复：Session 冲突
-**场景**: 系统报 `Cannot read user of undefined`。
-**原因**: 系统 Session 存储层强制要求 UserID，但 OAuth 初始化时用户未登录。
-**修复逻辑**: 
-修改 Session 存储服务的 `set` 方法，允许在 `session.passport.user` 为空时依然保存会话（仅存储 `state` 等 OAuth 元数据）。
+## 2. 核心架构陷阱：Session 存储冲突
+**问题场景**: 系统在 OAuth 重定向之前报错，提示无法读取用户信息或 Session 保存失败。
+**通用原因**: 某些系统的 Session 存储逻辑默认强制要求会话必须绑定已登录用户。但在 OAuth 跳转前，用户身份尚未建立。
+**通用解决方案**: 
+必须放宽 Session 存储层的校验。逻辑应调整为：即使 `user` 为空，也允许存储会话（仅保留 OAuth 元数据），直到回调验证成功后再注入用户信息。
 
-## 3. 401 错误排查清单
-- **Redirect URI**: 必须与 Casdoor 后台配置的 URL 字符级匹配（包括 `http/https`）。
-- **容器网络**: 确保后端容器能访问到 `casdoor.adesk.com`。
-- **AccessToken 获取**: 检查 Client Secret 是否被错误转义。
+## 3. 回调 401 报错排错清单 (通用)
+- **参数校验**: 检查 Client Secret 是否被后端配置加载器错误地转义或截断。
+- **域名匹配**: 内部回调地址的 `http` 与 `https` 协议头必须与 Casdoor 后台配置完全字符级匹配。
+- **网络隔离**: 确保部署环境的后端容器/进程具备访问 Casdoor 服务器域名的外部网络出站权限。

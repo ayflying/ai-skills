@@ -1,17 +1,26 @@
 # 内置用户系统兼容与账户关联逻辑
 
-## 1. 自动关联模式 (Email Binding)
-当系统已有本地用户时，应遵循以下逻辑：
-1. **查 Provider**: 检查 `db.findUserByProvider('casdoor', casdoor_id)`。
-2. **查 Email**: 若未绑定，检查 `db.findUserByEmail(casdoor_email)`。
-3. **绑定**: 若 Email 匹配，更新本地用户，添加 `casdoor_id` 作为其外部身份标识。
-4. **降级**: 若都不存在，执行 `Auto-Signup` 创建新账户。
+当目标系统已拥有自身的用户体系时，集成 Casdoor 应遵循“身份合并”原则，而非直接创建冗余账号。
 
-## 2. 详细用户字段映射参考
-| Casdoor 字段 | 本地建议字段 | 说明 |
+## 1. 自动关联工作流 (Account Linking)
+系统在处理 Casdoor 登录成功的回调后，应执行以下级联查找逻辑：
+
+1. **外部 ID 查找**: 检查本地数据库中是否已存在关联此 `Casdoor Provider + ProviderID` 的记录。
+2. **唯一标识符匹配**: 如果未找到外部绑定，尝试通过 `Email` 或 `手机号` 查找系统现有的内置用户。
+3. **静默绑定**: 如果找到同 Email 用户，将其本地 ID 与 Casdoor ID 建立关联关系。
+4. **自动创建**: 仅当上述两步都失败时，才创建全新的本地用户记录。
+
+## 2. 字段映射标准
+集成时建议遵循以下映射准则：
+
+| 外部字段 (Casdoor) | 通用映射含义 | 说明 |
 | :--- | :--- | :--- |
-| `name` | `username` | 唯一系统标识。 |
-| `email` | `email` | 核心联系方式，用于关联。 |
-| `displayName` | `name` | 显示名。 |
-| `avatar` | `avatarUrl` | 同步头像。 |
-| `properties` | `metadata` | 处理自定义字段。 |
+| `name` | `Login Name` | 唯一系统标识符。 |
+| `email` | `Primary Contact` | 用于账户自动关联的关键字段。 |
+| `displayName` | `Nickname / Name` | 前端显示的友好名称。 |
+| `avatar` | `Avatar URL` | 用户的头像链接。 |
+| `id` | `External Identity` | 用于唯一确定外部来源身份的 ID。 |
+
+## 3. 混合认证设计建议
+- **多源登录**: 前端登录界面应同时提供“内置账户登录”和“SSO 登录”入口。
+- **权限继承**: 关联后的用户应同时拥有其在内置系统中原有的权限以及根据 Casdoor 角色新同步的权限。
