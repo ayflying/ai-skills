@@ -58,11 +58,18 @@ python scripts/bt_api.py files /www/wwwroot
 - ✅ **网站管理**: 列表显示及基础运维。
 - ✅ **容器化**: 支持 Docker 容器的状态监控与控制。
 - ✅ **数据库**: 快速查看和管理 MySQL 数据库。
-- ✅ **文件管理**: 远程文件系统浏览。
+- ✅ **文件管理**: 远程文件系统读写与传输。
 
-## 接口文档
+## 技术文档
 
-查看详细的 [API 接口文档](API_REFERENCE.md) 了解所有支持的方法和参数。
+该技能深度集成了宝塔面板 API，详细的接口定义（路径、参数、响应格式）请参阅：
+
+- [公共规范](docs/common.md) - 认证与 Token 生成
+- [网站管理](docs/site.md) - 增删改查、SSL
+- [文件管理](docs/files.md) - 目录、读写、Shell
+- [Docker 管理](docs/docker.md) - 容器与 Compose
+- [系统管理](docs/system.md) - 资源状态、软件列表
+- [数据库管理](docs/database.md) - 数据库列表
 
 ## 许可证
 

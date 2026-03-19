@@ -22,6 +22,7 @@ ai-skills/
     └── baota-panel/       # 宝塔面板管理技能
         ├── README.md      # 技能说明
         ├── SKILL.md       # 技能文档
+        ├── docs/          # API 接口技术文档
         ├── scripts/       # API 脚本
         └── .env.example   # 配置模板
 ```

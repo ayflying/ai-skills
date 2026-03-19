@@ -47,6 +47,11 @@ class BTPanelAPI:
 
     # --- Site Management ---
     def get_sites(self, page=1, limit=20):
+        """
+        获取网站列表
+        :param page: 当前页码
+        :param limit: 每页显示的记录数
+        """
         return self.request(
             "/data?action=getData&table=sites", {"p": page, "limit": limit}
         )
@@ -62,6 +67,17 @@ class BTPanelAPI:
         ftp="false",
         sql="false",
     ):
+        """
+        创建新网站
+        :param webname: 网站域名
+        :param path: 网站根目录路径
+        :param type: 网站类型 (默认 PHP)
+        :param version: PHP版本 (00为静态)
+        :param port: 端口号
+        :param ps: 备注信息
+        :param ftp: 是否创建FTP
+        :param sql: 是否创建数据库
+        """
         params = {
             "webname": webname,
             "path": path,
@@ -75,26 +91,44 @@ class BTPanelAPI:
         return self.request("/site?action=AddSite", params)
 
     def delete_site(self, site_id, webname):
-        """删除网站"""
+        """
+        删除网站
+        :param site_id: 网站ID
+        :param webname: 网站主域名
+        """
         return self.request(
             "/site?action=DeleteSite", {"id": site_id, "webname": webname}
         )
 
     def set_site_status(self, site_id, webname, status):
-        """设置网站状态 (0: 停止, 1: 启动)"""
+        """
+        设置网站状态
+        :param site_id: 网站ID
+        :param webname: 网站主域名
+        :param status: 0表示停止, 1表示启动
+        """
         action = "SiteStop" if status == 0 else "SiteStart"
         return self.request(
             f"/site?action={action}", {"id": site_id, "webname": webname}
         )
 
     def set_php_version(self, webname, version):
-        """修改网站 PHP 版本"""
+        """
+        修改网站使用的PHP版本
+        :param webname: 网站域名
+        :param version: PHP版本号 (如 74, 80)
+        """
         return self.request(
             "/site?action=SetPHPVersion", {"siteName": webname, "version": version}
         )
 
     def apply_let_ssl(self, domain, site_id, auth_type="http", auth_to=None):
-        """申请 Let's Encrypt SSL 证书"""
+        """
+        申请 Let's Encrypt 免费证书
+        :param domain: 域名
+        :param site_id: 网站ID
+        :param auth_type: 验证类型 (http/dns)
+        """
         params = {
             "domains": json.dumps([domain]),
             "id": site_id,
@@ -105,6 +139,7 @@ class BTPanelAPI:
 
     # --- Docker Management ---
     def get_docker_containers(self):
+        """获取所有 Docker 容器列表"""
         # Using verified path and parameters from exploration
         url = "/project/docker/model"
         params = {
@@ -123,18 +158,36 @@ class BTPanelAPI:
 
     # --- Database Management ---
     def get_databases(self, page=1, limit=20):
+        """
+        获取数据库列表
+        :param page: 页码
+        :param limit: 每页数量
+        """
         return self.request(
             "/data?action=getData&table=databases", {"p": page, "limit": limit}
         )
 
     # --- File Management ---
     def get_files(self, path):
+        """
+        获取指定目录的文件和文件夹列表
+        :param path: 服务器绝对路径
+        """
         return self.request("/files?action=GetDir", {"path": path})
 
     def create_dir(self, path):
+        """
+        创建新目录
+        :param path: 绝对路径
+        """
         return self.request("/files?action=CreateDir", {"path": path})
 
     def write_file(self, path, content):
+        """
+        写入文件内容 (覆盖)
+        :param path: 绝对路径
+        :param content: 文件内容
+        """
         # Try the WriteFile action which might be more appropriate for new files
         import base64
 
@@ -144,11 +197,18 @@ class BTPanelAPI:
         )
 
     def get_file_content(self, path):
-        """读取文件内容"""
+        """
+        读取服务器文件内容
+        :param path: 绝对路径
+        """
         return self.request("/files?action=GetFileBody", {"path": path})
 
     def download_file(self, remote_path, local_path):
-        """下载远程文件到本地"""
+        """
+        下载服务器文件到本地路径
+        :param remote_path: 服务器绝对路径
+        :param local_path: 本地保存路径
+        """
         result = self.get_file_content(remote_path)
         if result and result.get("status") is not False:
             content = result.get("data", "")
@@ -158,7 +218,11 @@ class BTPanelAPI:
         return result
 
     def upload_file(self, local_path, remote_path):
-        """上传本地文件到服务器 (使用 WriteFile 方式)"""
+        """
+        上传本地文件到服务器指定路径
+        :param local_path: 本地文件路径
+        :param remote_path: 服务器保存绝对路径
+        """
         if not os.path.exists(local_path):
             return {"status": False, "msg": f"Local file {local_path} not found"}
 
@@ -168,7 +232,10 @@ class BTPanelAPI:
         return self.write_file(remote_path, content)
 
     def exec_shell(self, command):
-        """执行 shell 命令"""
+        """
+        在服务器执行 shell 命令
+        :param command: shell 指令
+        """
         return self.request("/files?action=ExecShell", {"command": command})
 
     # --- Docker Compose Management ---
