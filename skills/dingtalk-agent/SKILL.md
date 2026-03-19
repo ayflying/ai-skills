@@ -1,22 +1,19 @@
----
-name: dingtalk-agent
-description: 钉钉AI助手，支持专注模式并集成 OpenCode API 和即梦AI（需对应技能已安装）。
----
-
 # DingTalk AI Agent (钉钉AI助手)
 
-## 安装命令
-
-```bash
-npx skills add ayflying/ai-skills --skill dingtalk-agent
+```yaml
+name: dingtalk-agent
+description: |
+  钉钉AI助手，通过钉钉机器人接收用户消息并执行任务。
+  支持 OpenCode 模式：发送 /opencode 进入，/exit 退出。
+  集成 opencode-api 技能执行 OpenCode 任务。
+  集成 jimeng-ai-generator 技能生成AI图片。
 ```
 
 ## 功能说明
-1. **专注模式**：
-   - 被@一次后自动进入专注模式
-   - 10分钟内无需重复@即可继续对话
-   - 发送 `/exit` 退出专注模式
-   - 10分钟无活动自动退出
+1. **OpenCode 模式**：
+   - 发送 `/opencode` 进入 OpenCode 模式
+   - 发送 `/exit` 退出 OpenCode 模式
+   - 在 OpenCode 模式下，@机器人 的消息会被当作任务执行
 
 2. **OpenCode 集成**：
    - 通过 opencode-api 技能执行代码任务
@@ -30,9 +27,9 @@ npx skills add ayflying/ai-skills --skill dingtalk-agent
 | 命令 | 说明 |
 |------|------|
 | /help | 显示帮助信息 |
-| /opencode | 进入专注模式 |
-| /exit | 退出专注模式 |
-| /status | 查看当前状态 |
+| /opencode | 进入 OpenCode 模式（显示当前模型） |
+| /exit | 退出 OpenCode 模式 |
+| /status | 查看当前状态和模型 |
 | /jimeng <提示词> | 生成AI图片 |
 
 ## 会话命名规则
@@ -53,11 +50,11 @@ npx skills add ayflying/ai-skills --skill dingtalk-agent
 ## 文件结构
 ```
 dingtalk-agent/
-├── SKILL.md              # 技能核心文档
-└── scripts/              # 源代码
-    ├── main.go           # 主程序
-    ├── go.mod            # 依赖管理
-    └── ...
+├── SKILL.md              # 技能文档
+├── main.go               # 主程序（仅消息处理，调用 opencode-api 技能）
+├── dingtalk-bot.exe      # 编译后的可执行文件
+├── sessions.json         # 用户会话状态（自动生成）
+└── group_contexts.json   # 群组上下文（自动生成）
 ```
 
 ## 注意事项
