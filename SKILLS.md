@@ -9,22 +9,15 @@ ai-skills/
 ├── .gitignore             # Git 忽略文件
 └── skills/
     └── dingtalk-agent/    # 钉钉机器人技能
-        ├── README.md      # 技能说明
-        ├── SKILL.md       # 技能文档
-        ├── main.go        # Go 主程序
-        ├── main_test.go   # 单元测试
-        ├── go.mod         # Go 模块定义
-        └── go.sum         # Go 依赖锁定
+        ├── SKILL.md       # 技能核心文档
+        └── scripts/       # Go 源代码与编译
     └── opencode-api/      # OpenCode API 技能
-        ├── SKILL.md       # 技能文档
-        ├── scripts/       # Python 脚本
-        └── .env.example   # 环境配置模板
+        ├── SKILL.md       # 技能核心文档
+        └── scripts/       # Python 脚本
     └── baota-panel/       # 宝塔面板管理技能
-        ├── README.md      # 技能说明
-        ├── SKILL.md       # 技能文档
-        ├── docs/          # API 接口技术文档
-        ├── scripts/       # API 脚本
-        └── .env.example   # 配置模板
+        ├── SKILL.md       # 技能核心文档
+        ├── references/    # 模块化技术文档
+        └── scripts/       # API 脚本
 ```
 
 ## 技能详情
@@ -38,17 +31,9 @@ ai-skills/
 - 通过 `@机器人` 发送任务消息
 - OpenCode AI 执行任务并将结果推回钉钉群
 - 群聊共享上下文和用户独立模式开关
-- 适合团队协作开发
 
 **使用方式**:
-```bash
-cd skills/dingtalk-agent
-go mod tidy
-go build -o dingtalk-agent.exe main.go
-./dingtalk-agent.exe
-```
-
-**详细说明**: 查看 `skills/dingtalk-agent/README.md`
+详见 `skills/dingtalk-agent/SKILL.md`
 
 ### opencode-api
 
@@ -58,15 +43,9 @@ go build -o dingtalk-agent.exe main.go
 - 连接到运行中的 OpenCode 服务器
 - 执行 AI 驱动的任务指令
 - 返回执行结果（支持 JSON 格式）
-- 支持会话管理和模型切换
 
 **使用方式**:
-```bash
-cd skills/opencode-api
-python scripts/opencode_runner.py "任务描述"
-```
-
-**详细说明**: 查看 `skills/opencode-api/SKILL.md`
+详见 `skills/opencode-api/SKILL.md`
 
 ### baota-panel
 
@@ -74,16 +53,11 @@ python scripts/opencode_runner.py "任务描述"
 
 **功能**:
 - 网站管理、Docker 监控、数据库运维
-- 远程文件系统浏览
-- 系统资源状态检查
+- 远程文件系统读写、压缩与回收站
+- 系统资源状态检查与安全管理
 
 **使用方式**:
-```bash
-cd skills/baota-panel
-python scripts/bt_api.py sites
-```
-
-**详细说明**: 查看 `skills/baota-panel/README.md`
+详见 `skills/baota-panel/SKILL.md`
 
 ## 如何添加新技能
 

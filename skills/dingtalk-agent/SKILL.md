@@ -53,11 +53,11 @@ npx skills add ayflying/ai-skills --skill dingtalk-agent
 ## 文件结构
 ```
 dingtalk-agent/
-├── SKILL.md              # 技能文档
-├── main.go               # 主程序（仅消息处理，调用 opencode-api 技能）
-├── dingtalk-bot.exe      # 编译后的可执行文件
-├── sessions.json         # 用户会话状态（自动生成）
-└── group_contexts.json   # 群组上下文（自动生成）
+├── SKILL.md              # 技能核心文档
+└── scripts/              # 源代码
+    ├── main.go           # 主程序
+    ├── go.mod            # 依赖管理
+    └── ...
 ```
 
 ## 注意事项
