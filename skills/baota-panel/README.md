@@ -60,6 +60,10 @@ python scripts/bt_api.py files /www/wwwroot
 - ✅ **数据库**: 快速查看和管理 MySQL 数据库。
 - ✅ **文件管理**: 远程文件系统浏览。
 
+## 接口文档
+
+查看详细的 [API 接口文档](API_REFERENCE.md) 了解所有支持的方法和参数。
+
 ## 许可证
 
 MIT License
