@@ -474,6 +474,11 @@ class BTPanelAPI:
     def exec_shell(self, command):
         return self.request("/files?action=ExecShell", {"command": command})
 
+    def docker_compose(self, project_path, command, detach=True):
+        detach_flag = "-d" if detach else ""
+        cmd = f"cd {project_path} && docker compose {command} {detach_flag}".strip()
+        return self.exec_shell(cmd)
+
     def get_panel_logs(self, page=1, limit=20):
         return self.request(
             "/data?action=getData&table=logs", {"p": page, "limit": limit}
