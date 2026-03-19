@@ -1,12 +1,14 @@
+---
+name: dingtalk-agent
+description: 钉钉AI助手，支持专注模式并集成 OpenCode API 和即梦AI（需对应技能已安装）。
+---
+
 # DingTalk AI Agent (钉钉AI助手)
 
-```yaml
-name: dingtalk-agent
-description: |
-  钉钉AI助手，通过钉钉机器人接收用户消息并执行任务。
-  支持专注模式：被@一次后进入专注模式，10分钟内无需重复@。
-  集成 opencode-api 技能执行 OpenCode 任务。
-  集成 jimeng-ai-generator 技能生成AI图片。
+## 安装命令
+
+```bash
+npx skills add ayflying/ai-skills --skill dingtalk-agent
 ```
 
 ## 功能说明
