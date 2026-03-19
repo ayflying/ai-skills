@@ -171,8 +171,8 @@ class BTPanelAPI:
         )
 
     def get_docker_logs(self, container_id):
-        """获取 Docker 容器日志"""
-        return self.request(
+        """获取 Docker 容器日志 (优先使用 API, 失败则回退到 Shell)"""
+        result = self.request(
             "/project/docker/model",
             {
                 "url": "unix:///var/run/docker.sock",
@@ -181,6 +181,10 @@ class BTPanelAPI:
                 "container_id": container_id,
             },
         )
+        if result and result.get("status") is False:
+            # Fallback to shell if API fails
+            return self.exec_shell(f"docker logs --tail 100 {container_id}")
+        return result
 
     # --- Docker Compose Management ---
     def docker_compose_cmd(self, path, command):
@@ -529,6 +533,33 @@ if __name__ == "__main__":
             print(json.dumps(api.set_site_status(args[0], args[1], 1), indent=2))
     elif action == "docker":
         print(json.dumps(api.get_docker_containers(), indent=2))
+    elif action == "docker_logs":
+        if not args:
+            print(
+                json.dumps(
+                    {"status": False, "msg": "Usage: docker_logs <container_id>"}
+                )
+            )
+        else:
+            print(json.dumps(api.get_docker_logs(args[0]), indent=2))
+    elif action == "compose":
+        if len(args) < 2:
+            print(
+                json.dumps({"status": False, "msg": "Usage: compose <path> <command>"})
+            )
+        else:
+            print(
+                json.dumps(
+                    api.docker_compose_cmd(args[0], " ".join(args[1:])), indent=2
+                )
+            )
+    elif action == "compose_logs":
+        if not args:
+            print(json.dumps({"status": False, "msg": "Usage: compose_logs <path>"}))
+        else:
+            print(
+                json.dumps(api.docker_compose_cmd(args[0], "logs --tail 100"), indent=2)
+            )
     elif action == "databases":
         print(json.dumps(api.get_databases(), indent=2))
     elif action == "add_db":
