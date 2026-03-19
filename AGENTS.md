@@ -17,19 +17,20 @@
 ### 2.1 DingTalk Agent 技能 (Go 项目)
 ... (保持不变) ...
 
-### 2.2 OpenCode API 技能 (Python 项目)
+### 2.2 Python 技能 (OpenCode API, Baota Panel)
 
 **前提条件**:
 - Python 3.10+
+- 安装依赖: `pip install -r requirements.txt` 或 `pip install requests urllib3`
 - 配置 `.env` 文件 (基于 `.env.example`)
 
 **运行**:
 ```bash
 # 进入技能目录
-cd skills/opencode-api
+cd skills/<skill-name>
 
 # 运行脚本
-python scripts/opencode_runner.py "任务描述"
+python scripts/<script_name>.py "任务描述"
 ```
 
 ### 2.3 标准化技能安装

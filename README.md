@@ -10,6 +10,7 @@
 |----------|------|------|
 | [dingtalk-agent](skills/dingtalk-agent/README.md) | 钉钉机器人集成 OpenCode AI | `skills/dingtalk-agent/` |
 | [opencode-api](skills/opencode-api/SKILL.md) | 连接 OpenCode 服务器执行 AI 任务 | `skills/opencode-api/` |
+| [baota-panel](skills/baota-panel/README.md) | 通过宝塔面板 API 管理服务器资源 | `skills/baota-panel/` |
 
 ## 使用方式
 

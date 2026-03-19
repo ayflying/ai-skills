@@ -19,6 +19,11 @@ ai-skills/
         ├── SKILL.md       # 技能文档
         ├── scripts/       # Python 脚本
         └── .env.example   # 环境配置模板
+    └── baota-panel/       # 宝塔面板管理技能
+        ├── README.md      # 技能说明
+        ├── SKILL.md       # 技能文档
+        ├── scripts/       # API 脚本
+        └── .env.example   # 配置模板
 ```
 
 ## 技能详情
@@ -61,6 +66,23 @@ python scripts/opencode_runner.py "任务描述"
 ```
 
 **详细说明**: 查看 `skills/opencode-api/SKILL.md`
+
+### baota-panel
+
+**描述**: 通过宝塔面板 API 管理服务器资源
+
+**功能**:
+- 网站管理、Docker 监控、数据库运维
+- 远程文件系统浏览
+- 系统资源状态检查
+
+**使用方式**:
+```bash
+cd skills/baota-panel
+python scripts/bt_api.py sites
+```
+
+**详细说明**: 查看 `skills/baota-panel/README.md`
 
 ## 如何添加新技能
 
