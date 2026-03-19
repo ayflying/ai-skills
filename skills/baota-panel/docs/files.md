@@ -33,7 +33,45 @@
   |----------|------|------|
   | `path` | string | 绝对路径 |
 
-## 5. 执行 Shell 命令
+## 5. 压缩文件/目录
+- **URL**: `/files?action=Zip`
+- **Method**: `POST`
+- **参数**:
+  | 参数名 | 类型 | 说明 |
+  |----------|------|------|
+  | `sfile` | string | 绝对路径 |
+  | `dfile` | string | 目标压缩文件路径 |
+  | `type` | string | 压缩格式 ("zip" 或 "tar.gz") |
+
+## 6. 解压文件
+- **URL**: `/files?action=UnZip`
+- **Method**: `POST`
+- **参数**:
+  | 参数名 | 类型 | 说明 |
+  |----------|------|------|
+  | `sfile` | string | 绝对路径 |
+  | `dfile` | string | 目标解压目录 |
+  | `password` | string | 密码 (可选) |
+
+## 7. 获取回收站内容
+- **URL**: `/files?action=GetRecycleBin`
+- **Method**: `POST`
+- **参数**: 无 (仅公共参数)
+
+## 8. 从回收站恢复文件
+- **URL**: `/files?action=ReFile`
+- **Method**: `POST`
+- **参数**:
+  | 参数名 | 类型 | 说明 |
+  |----------|------|------|
+  | `path` | string | 回收站中的文件路径 |
+
+## 9. 清空回收站
+- **URL**: `/files?action=CloseRecycleBin`
+- **Method**: `POST`
+- **参数**: 无 (仅公共参数)
+
+## 10. 执行 Shell 命令
 在服务器上执行 bash 命令。
 
 - **URL**: `/files?action=ExecShell`

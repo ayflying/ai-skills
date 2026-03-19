@@ -16,7 +16,20 @@
   | `dk_model_name` | string | "container" |
   | `dk_def_name` | string | "get_list" |
 
-## 2. 添加 Docker Compose 模板
+## 2. 操作 Docker 容器
+对指定容器执行启动、停止、重启或删除操作。
+
+- **URL**: `/project/docker/model`
+- **Method**: `POST`
+- **参数**:
+  | 参数名 | 类型 | 说明 |
+  |----------|------|------|
+  | `url` | string | `unix:///var/run/docker.sock` |
+  | `dk_model_name` | string | "container" |
+  | `dk_def_name` | string | 操作指令: "start", "stop", "restart", "remove" |
+  | `container_id` | string | 容器 ID |
+
+## 3. 添加 Docker Compose 模板
 - **参数**:
   | 参数名 | 类型 | 说明 |
   |----------|------|------|

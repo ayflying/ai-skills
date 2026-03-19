@@ -156,6 +156,20 @@ class BTPanelAPI:
             return msg
         return result
 
+    def operate_docker_container(self, container_id, action):
+        """
+        操作 Docker 容器 (start/stop/restart/remove)
+        """
+        return self.request(
+            "/project/docker/model",
+            {
+                "url": "unix:///var/run/docker.sock",
+                "dk_model_name": "container",
+                "dk_def_name": action,
+                "container_id": container_id,
+            },
+        )
+
     # --- Database Management ---
     def get_databases(self, page=1, limit=20):
         """
@@ -165,6 +179,56 @@ class BTPanelAPI:
         """
         return self.request(
             "/data?action=getData&table=databases", {"p": page, "limit": limit}
+        )
+
+    def create_database(self, name, username, password, db_type="MySQL", ps=""):
+        """
+        创建数据库
+        """
+        return self.request(
+            "/database?action=AddDatabase",
+            {
+                "name": name,
+                "db_user": username,
+                "password": password,
+                "address": "127.0.0.1",
+                "type": db_type,
+                "ps": ps,
+            },
+        )
+
+    def delete_database(self, db_id, name):
+        """
+        删除数据库
+        """
+        return self.request(
+            "/database?action=DeleteDatabase", {"id": db_id, "name": name}
+        )
+
+    def set_database_password(self, db_id, name, password):
+        """
+        修改数据库密码
+        """
+        return self.request(
+            "/database?action=ResDatabasePassword",
+            {"id": db_id, "name": name, "password": password},
+        )
+
+    # --- Software Management ---
+    def install_software(self, s_name, version):
+        """
+        安装软件
+        """
+        return self.request(
+            "/plugin?action=install_plugin", {"s_name": s_name, "version": version}
+        )
+
+    def uninstall_software(self, s_name, version):
+        """
+        卸载软件
+        """
+        return self.request(
+            "/plugin?action=un_install_plugin", {"s_name": s_name, "version": version}
         )
 
     # --- File Management ---
@@ -181,6 +245,41 @@ class BTPanelAPI:
         :param path: 绝对路径
         """
         return self.request("/files?action=CreateDir", {"path": path})
+
+    def compress_file(self, s_path, d_path, type="zip"):
+        """
+        压缩文件/目录
+        """
+        return self.request(
+            "/files?action=Zip", {"sfile": s_path, "dfile": d_path, "type": type}
+        )
+
+    def decompress_file(self, s_path, d_path, password=""):
+        """
+        解压文件
+        """
+        return self.request(
+            "/files?action=UnZip",
+            {"sfile": s_path, "dfile": d_path, "password": password},
+        )
+
+    def get_recycle_bin(self):
+        """
+        查看回收站内容
+        """
+        return self.request("/files?action=GetRecycleBin")
+
+    def restore_recycle_bin(self, path):
+        """
+        从回收站恢复
+        """
+        return self.request("/files?action=ReFile", {"path": path})
+
+    def empty_recycle_bin(self):
+        """
+        清空回收站
+        """
+        return self.request("/files?action=CloseRecycleBin")
 
     def write_file(self, path, content):
         """
@@ -358,6 +457,20 @@ if __name__ == "__main__":
         print(json.dumps(api.get_docker_containers(), indent=2))
     elif action == "databases":
         print(json.dumps(api.get_databases(), indent=2))
+    elif action == "add_db":
+        if len(args) < 3:
+            print(
+                json.dumps(
+                    {"status": False, "msg": "Usage: add_db <name> <user> <pass>"}
+                )
+            )
+        else:
+            print(json.dumps(api.create_database(args[0], args[1], args[2]), indent=2))
+    elif action == "del_db":
+        if len(args) < 2:
+            print(json.dumps({"status": False, "msg": "Usage: del_db <id> <name>"}))
+        else:
+            print(json.dumps(api.delete_database(args[0], args[1]), indent=2))
     elif action == "files":
         path = args[0] if args else "/"
         print(json.dumps(api.get_files(path), indent=2))
@@ -389,6 +502,20 @@ if __name__ == "__main__":
             )
         else:
             print(json.dumps(api.download_file(args[0], args[1]), indent=2))
+    elif action == "zip":
+        if len(args) < 2:
+            print(json.dumps({"status": False, "msg": "Usage: zip <src> <dst>"}))
+        else:
+            print(json.dumps(api.compress_file(args[0], args[1]), indent=2))
+    elif action == "unzip":
+        if len(args) < 2:
+            print(json.dumps({"status": False, "msg": "Usage: unzip <src> <dst>"}))
+        else:
+            print(json.dumps(api.decompress_file(args[0], args[1]), indent=2))
+    elif action == "recycle":
+        print(json.dumps(api.get_recycle_bin(), indent=2))
+    elif action == "empty_recycle":
+        print(json.dumps(api.empty_recycle_bin(), indent=2))
     elif action == "ssl":
         if len(args) < 2:
             print(json.dumps({"status": False, "msg": "Usage: ssl <domain> <site_id>"}))
@@ -396,6 +523,13 @@ if __name__ == "__main__":
             print(json.dumps(api.apply_let_ssl(args[0], args[1]), indent=2))
     elif action == "plugins":
         print(json.dumps(api.get_plugins(), indent=2))
+    elif action == "install":
+        if len(args) < 2:
+            print(
+                json.dumps({"status": False, "msg": "Usage: install <name> <version>"})
+            )
+        else:
+            print(json.dumps(api.install_software(args[0], args[1]), indent=2))
     elif action == "exec_shell":
         command = " ".join(args) if args else "echo hello"
         print(json.dumps(api.exec_shell(command), indent=2))

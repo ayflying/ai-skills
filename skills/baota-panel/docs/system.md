@@ -15,3 +15,21 @@
 - **Method**: `POST`
 - **参数**: 无 (仅公共参数)
 - **返回**: 软件列表 JSON。
+
+## 3. 安装软件
+- **URL**: `/plugin?action=install_plugin`
+- **Method**: `POST`
+- **参数**:
+  | 参数名 | 类型 | 说明 |
+  |----------|------|------|
+  | `s_name` | string | 软件名称 |
+  | `version` | string | 软件版本 |
+
+## 4. 卸载软件
+- **URL**: `/plugin?action=un_install_plugin`
+- **Method**: `POST`
+- **参数**:
+  | 参数名 | 类型 | 说明 |
+  |----------|------|------|
+  | `s_name` | string | 软件名称 |
+  | `version` | string | 软件版本 |
