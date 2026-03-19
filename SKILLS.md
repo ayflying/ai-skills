@@ -16,8 +16,11 @@ ai-skills/
         └── scripts/       # Python 脚本
     └── baota-panel/       # 宝塔面板管理技能
         ├── SKILL.md       # 技能核心文档
-        ├── references/    # 模块化技术文档
+        ├── docs/          # 模块化技术文档
         └── scripts/       # API 脚本
+    └── casdoor-integration/ # Casdoor SSO 集成指南
+        ├── SKILL.md       # 技能核心文档
+        └── references/    # 集成指南资源
 ```
 
 ## 技能详情
@@ -58,6 +61,19 @@ ai-skills/
 
 **使用方式**:
 详见 `skills/baota-panel/SKILL.md`
+
+### casdoor-integration
+
+**描述**: 通用的 Casdoor SSO/IAM 集成指南
+
+**功能**:
+- OAuth2/OIDC 认证逻辑与 Session 稳定性处理
+- 内置系统兼容性与账户关联规范
+- 组织架构绑定与权限角色映射
+- 前端构建陷阱与环境变量注入方案
+
+**使用方式**:
+详见 `skills/casdoor-integration/README.md`
 
 ## 如何添加新技能
 

@@ -5,7 +5,11 @@ description: 通用的 Casdoor SSO/IAM 集成指南。支持跨语言 OAuth2/OID
 
 # Casdoor 全功能通用集成指南
 
-本技能提供了在任何现代化应用程序架构中对接 Casdoor 身份访问管理（IAM）系统的标准程序化知识。
+## 安装命令
+
+```bash
+npx skills add ayflying/ai-skills --skill casdoor-integration
+```
 
 ## 1. 核心集成模式
 - **手动 OAuth2 模式 (推荐)**: 避开特定框架插件的黑盒限制，通过标准 HTTP 请求手动处理令牌交换，以获得最佳的日志追踪和跨平台稳定性。
