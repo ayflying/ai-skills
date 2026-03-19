@@ -1,0 +1,4 @@
+2026-03-19 17:54:39,898 - WeChatBot - INFO - 配置加载完成: {'auto_reply': True, 'reply_message': '测试回复消息', 'collect_messages': True, 'save_media': True, 'group_filter': [], 'contact_filter': []}
+2026-03-19 17:54:39,899 - WeChatBot - INFO - 微信机器人初始化完成
+2026-03-19 17:54:39,901 - WeChatBot - INFO - 配置加载完成: {'auto_reply': True, 'reply_message': '测试回复消息', 'collect_messages': True, 'save_media': True, 'group_filter': [], 'contact_filter': []}
+2026-03-19 17:54:39,902 - WeChatBot - INFO - 微信机器人初始化完成

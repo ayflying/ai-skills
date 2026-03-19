@@ -12,6 +12,7 @@
 | [opencode-api](skills/opencode-api/SKILL.md) | 连接 OpenCode 服务器执行 AI 任务 | `skills/opencode-api/` |
 | [baota-panel](skills/baota-panel/README.md) | 通过宝塔面板 API 管理服务器资源 | `skills/baota-panel/` |
 | [casdoor-integration](skills/casdoor-integration/README.md) | 通用的 Casdoor SSO/IAM 集成指南 | `skills/casdoor-integration/` |
+| [wechat-bot](skills/wechat-bot/README.md) | 微信机器人，基于wxpy实现个人微信自动化 | `skills/wechat-bot/` |
 
 ## 使用方式
 

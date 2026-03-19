@@ -21,6 +21,10 @@ ai-skills/
     └── casdoor-integration/ # Casdoor SSO 集成指南
         ├── SKILL.md       # 技能核心文档
         └── references/    # 集成指南资源
+    └── wechat-bot/        # 微信机器人技能
+        ├── SKILL.md       # 技能核心文档
+        ├── scripts/       # Python 脚本
+        └── .env.example   # 配置模板
 ```
 
 ## 技能详情
@@ -74,6 +78,20 @@ ai-skills/
 
 **使用方式**:
 详见 `skills/casdoor-integration/README.md`
+
+### wechat-bot
+
+**描述**: 微信机器人技能，基于wxpy实现个人微信自动化
+
+**功能**:
+- 消息收发（文本、图片、语音、视频、文件）
+- 自动回复配置
+- 媒体文件自动保存
+- 消息数据收集和统计
+- 内置命令支持（help、status、stats、export）
+
+**使用方式**:
+详见 `skills/wechat-bot/SKILL.md`
 
 ## 如何添加新技能
 
