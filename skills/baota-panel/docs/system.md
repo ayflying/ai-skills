@@ -33,3 +33,12 @@
   |----------|------|------|
   | `s_name` | string | 软件名称 |
   | `version` | string | 软件版本 |
+
+## 5. 更新软件
+- **URL**: `/plugin?action=update_plugin`
+- **Method**: `POST`
+- **参数**:
+  | 参数名 | 类型 | 说明 |
+  |----------|------|------|
+  | `s_name` | string | 软件名称 |
+  | `version` | string | 软件版本 |

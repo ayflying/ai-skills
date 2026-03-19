@@ -231,6 +231,50 @@ class BTPanelAPI:
             "/plugin?action=un_install_plugin", {"s_name": s_name, "version": version}
         )
 
+    def update_software(self, s_name, version):
+        """
+        更新软件
+        """
+        return self.request(
+            "/plugin?action=update_plugin", {"s_name": s_name, "version": version}
+        )
+
+    # --- Security & Firewall ---
+    def get_firewall_list(self, page=1, limit=20):
+        """获取防火墙规则列表"""
+        return self.request("/firewall?action=GetList", {"p": page, "limit": limit})
+
+    def add_firewall_rule(self, port, ps, protocol="tcp"):
+        """添加防火墙规则"""
+        return self.request(
+            "/firewall?action=AddAcceptPort",
+            {"port": port, "ps": ps, "protocol": protocol},
+        )
+
+    def delete_firewall_rule(self, rule_id, port):
+        """删除防火墙规则"""
+        return self.request(
+            "/firewall?action=DelAcceptPort", {"id": rule_id, "port": port}
+        )
+
+    def get_ssh_status(self):
+        """获取 SSH 状态"""
+        return self.request("/firewall?action=GetSSHStatus")
+
+    def set_ssh_status(self, status):
+        """设置 SSH 状态 (0: 关闭, 1: 开启)"""
+        action = "CloseSSH" if status == 0 else "OpenSSH"
+        return self.request(f"/firewall?action={action}")
+
+    # --- Logs ---
+    def get_panel_logs(self, page=1, limit=20):
+        """获取面板操作日志"""
+        return self.request("/config?action=get_logs", {"p": page, "limit": limit})
+
+    def get_site_logs(self, site_name):
+        """获取网站运行日志"""
+        return self.request("/site?action=GetSiteLogs", {"siteName": site_name})
+
     # --- File Management ---
     def get_files(self, path):
         """
@@ -530,6 +574,19 @@ if __name__ == "__main__":
             )
         else:
             print(json.dumps(api.install_software(args[0], args[1]), indent=2))
+    elif action == "update_soft":
+        if len(args) < 2:
+            print(
+                json.dumps(
+                    {"status": False, "msg": "Usage: update_soft <name> <version>"}
+                )
+            )
+        else:
+            print(json.dumps(api.update_software(args[0], args[1]), indent=2))
+    elif action == "firewall":
+        print(json.dumps(api.get_firewall_list(), indent=2))
+    elif action == "logs":
+        print(json.dumps(api.get_panel_logs(), indent=2))
     elif action == "exec_shell":
         command = " ".join(args) if args else "echo hello"
         print(json.dumps(api.exec_shell(command), indent=2))

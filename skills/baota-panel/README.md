@@ -68,8 +68,10 @@ python scripts/bt_api.py files /www/wwwroot
 - [网站管理](docs/site.md) - 增删改查、SSL
 - [文件管理](docs/files.md) - 目录、读写、Shell
 - [Docker 管理](docs/docker.md) - 容器与 Compose
-- [系统管理](docs/system.md) - 资源状态、软件列表
-- [数据库管理](docs/database.md) - 数据库列表
+- [系统管理](docs/system.md) - 资源状态、软件安装与更新
+- [数据库管理](docs/database.md) - 数据库增删改
+- [安全管理](docs/security.md) - 防火墙与 SSH
+- [日志查看](docs/logs.md) - 面板与网站日志
 
 ## 许可证
 
