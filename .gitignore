@@ -32,6 +32,11 @@ dingtalk-agent.exe
 *.swo
 *~
 
+# Environment files (包含敏感信息)
+.env
+.env.local
+.env.*.local
+
 # OS
 .DS_Store
 Thumbs.db
