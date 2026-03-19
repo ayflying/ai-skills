@@ -210,9 +210,10 @@ npx skills add ayflying/ai-skills --skill <skill-name>
 ## 5. 开发核心红线 (Mandatory Rules)
 
 1. **必须包含安装说明**：新增或修改技能时，必须在技能目录下的 `README.md` 和 `SKILL.md` 中写明标准化的 `npx skills add` 安装命令。
-2. **文档同步**：修改技能配置或功能后，必须同步更新主仓库的 `SKILLS.md` 和 `README.md` 中的技能列表。
-3. **安全第一**：严禁提交任何包含敏感信息（如 API Key, Client Secret）的文件，必须使用 `.env.example` 模板。
-4. **标准化格式**：`SKILL.md` 必须使用标准的 YAML Frontmatter 格式，以便被 `skills` CLI 正确识别。
+2. **删除操作确认**：**所有涉及删除、清空或破坏性的操作**（如删除网站、删除数据库、清空回收站、卸载软件等），**必须**在执行前明确告知用户并获得用户的确定授权。严禁在未征得用户同意的情况下擅自执行删除操作。
+3. **文档同步**：修改技能配置或功能后，必须同步更新主仓库的 `SKILLS.md` 和 `README.md` 中的技能列表。
+4. **安全第一**：严禁提交任何包含敏感信息（如 API Key, Client Secret）的文件，必须使用 `.env.example` 模板。
+5. **标准化格式**：`SKILL.md` 必须使用标准的 YAML Frontmatter 格式，以便被 `skills` CLI 正确识别。
 
 ---
 
