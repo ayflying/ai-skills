@@ -27,6 +27,7 @@ npx skills add ayflying/ai-skills --skill baota-panel
 - `python scripts/bt_api.py sites` - 列出网站
 - `python scripts/bt_api.py docker` - 容器状态
 - `python scripts/bt_api.py read_file <路径>` - 读取文件
+- `python scripts/test_compose.py` - **测试脚本**：演示容器编排的创建、日志查看及清理全流程。
 
 详见 [common.md](references/common.md) 了解 API 规范。
 
