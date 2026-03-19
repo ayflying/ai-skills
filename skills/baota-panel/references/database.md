@@ -44,3 +44,47 @@
 ## 5. 获取数据库日志
 - **URL**: `/database?action=GetDbErrorLog`
 - **Method**: `POST`
+
+## 6. 备份数据库
+- **URL**: `/database?action=ToBackup`
+- **Method**: `POST`
+- **参数**:
+  | 参数名 | 类型 | 说明 |
+  |----------|------|------|
+  | `name` | string | 数据库名 |
+
+## 7. 删除数据库备份
+- **URL**: `/database?action=DelBackup`
+- **Method**: `POST`
+- **参数**:
+  | 参数名 | 类型 | 说明 |
+  |----------|------|------|
+  | `name` | string | 数据库名 |
+  | `file` | string | 备份文件名 |
+
+## 8. 获取 FTP 列表
+- **URL**: `/data?action=getData&table=ftps`
+- **Method**: `POST`
+- **参数**:
+  | 参数名 | 类型 | 说明 |
+  |----------|------|------|
+  | `p` | int | 页码 |
+  | `limit` | int | 每页数量 |
+
+## 9. 修改 FTP 密码
+- **URL**: `/ftp?action=SetUserPassword`
+- **Method**: `POST`
+- **参数**:
+  | 参数名 | 类型 | 说明 |
+  |----------|------|------|
+  | `ftp_user` | string | FTP 用户名 |
+  | `password` | string | 新密码 |
+
+## 10. 设置 FTP 状态
+- **URL**: `/ftp?action=SetStatus`
+- **Method**: `POST`
+- **参数**:
+  | 参数名 | 类型 | 说明 |
+  |----------|------|------|
+  | `ftp_user` | string | FTP 用户名 |
+  | `status` | string | 状态 |

@@ -122,6 +122,105 @@ class BTPanelAPI:
     def get_site_logs(self, site_name):
         return self.request("/site?action=GetSiteLogs", {"siteName": site_name})
 
+    def get_site_php_version(self, site_name):
+        return self.request("/site?action=GetSitePHPVersion", {"siteName": site_name})
+
+    def set_site_password(self, site_name, password):
+        return self.request(
+            "/site?action=SetHasPwd", {"siteName": site_name, "has_pwd": password}
+        )
+
+    def close_site_password(self, site_name):
+        return self.request("/site?action=CloseHasPwd", {"siteName": site_name})
+
+    def get_dir_user_ini(self, site_name):
+        return self.request("/site?action=GetDirUserINI", {"siteName": site_name})
+
+    def get_site_domains(self, page=1, limit=20):
+        return self.request(
+            "/data?action=getData&table=domain", {"p": page, "limit": limit}
+        )
+
+    def add_site_domain(self, site_name, domain, port="80"):
+        return self.request(
+            "/site?action=AddDomain",
+            {"siteName": site_name, "domain": domain, "port": port},
+        )
+
+    def delete_site_domain(self, site_name, domain, port="80"):
+        return self.request(
+            "/site?action=DelDomain",
+            {"siteName": site_name, "domain": domain, "port": port},
+        )
+
+    def set_security(self, site_name, status, rules=""):
+        return self.request(
+            "/site?action=SetSecurity",
+            {"siteName": site_name, "open": status, "rules": rules},
+        )
+
+    def get_ssl_status(self, site_name):
+        return self.request("/site?action=GetSSL", {"siteName": site_name})
+
+    def set_ssl(self, site_name, cert_data, key_data):
+        return self.request(
+            "/site?action=SetSSL",
+            {"siteName": site_name, "cert": cert_data, "key": key_data},
+        )
+
+    def http_to_https(self, site_name):
+        return self.request("/site?action=HttpToHttps", {"siteName": site_name})
+
+    def close_https(self, site_name):
+        return self.request("/site?action=CloseToHttps", {"siteName": site_name})
+
+    def get_site_index(self, site_name):
+        return self.request("/site?action=GetIndex", {"siteName": site_name})
+
+    def set_site_index(self, site_name, index_files):
+        return self.request(
+            "/site?action=SetIndex", {"siteName": site_name, "index": index_files}
+        )
+
+    def get_rewrite_list(self, site_name):
+        return self.request("/site?action=GetRewriteList", {"siteName": site_name})
+
+    def get_limit_net(self, site_name):
+        return self.request("/site?action=GetLimitNet", {"siteName": site_name})
+
+    def set_limit_net(self, site_name, port="limit"):
+        return self.request(
+            "/site?action=SetLimitNet", {"siteName": site_name, "port": port}
+        )
+
+    def close_limit_net(self, site_name):
+        return self.request("/site?action=CloseLimitNet", {"siteName": site_name})
+
+    def get_301_status(self, site_name):
+        return self.request("/site?action=Get301Status", {"siteName": site_name})
+
+    def set_301_status(self, site_name, to_domain, open="true"):
+        return self.request(
+            "/site?action=Set301Status",
+            {"siteName": site_name, "toDomain": to_domain, "open": open},
+        )
+
+    # --- FTP Management ---
+    def get_ftp_list(self, page=1, limit=20):
+        return self.request(
+            "/data?action=getData&table=ftps", {"p": page, "limit": limit}
+        )
+
+    def set_ftp_password(self, ftp_user, password):
+        return self.request(
+            "/ftp?action=SetUserPassword", {"ftp_user": ftp_user, "password": password}
+        )
+
+    def set_ftp_status(self, ftp_user, status):
+        return self.request(
+            "/ftp?action=SetStatus", {"ftp_user": ftp_user, "status": status}
+        )
+
     # --- Docker Management ---
     def docker_request(self, model, def_name, extra_params=None):
         params = {
@@ -203,6 +302,58 @@ class BTPanelAPI:
     def get_database_logs(self):
         return self.request("/database?action=GetDbErrorLog")
 
+    def backup_database(self, db_name):
+        return self.request("/database?action=ToBackup", {"name": db_name})
+
+    def delete_database_backup(self, db_name, backup_file):
+        return self.request(
+            "/database?action=DelBackup", {"name": db_name, "file": backup_file}
+        )
+
+    # --- Website Proxy ---
+    def create_proxy(self, site_name, proxy_url, host, to_path=""):
+        return self.request(
+            "/site?action=CreateProxy",
+            {
+                "siteName": site_name,
+                "proxy_url": proxy_url,
+                "host": host,
+                "toPath": to_path,
+            },
+        )
+
+    def modify_proxy(self, site_name, proxy_url, host, to_path=""):
+        return self.request(
+            "/site?action=ModifyProxy",
+            {
+                "siteName": site_name,
+                "proxy_url": proxy_url,
+                "host": host,
+                "toPath": to_path,
+            },
+        )
+
+    # --- Website Dir Binding ---
+    def get_dir_binding(self, site_name):
+        return self.request("/site?action=GetDirBinding", {"siteName": site_name})
+
+    def add_dir_binding(self, site_name, domain, dir_path, port="80"):
+        return self.request(
+            "/site?action=AddDirBinding",
+            {"siteName": site_name, "domain": domain, "dir": dir_path, "port": port},
+        )
+
+    def delete_dir_binding(self, site_name, domain, dir_path):
+        return self.request(
+            "/site?action=DelDirBinding",
+            {"siteName": site_name, "domain": domain, "dir": dir_path},
+        )
+
+    def get_dir_rewrite(self, site_name, dir_path):
+        return self.request(
+            "/site?action=GetDirRewrite", {"siteName": site_name, "dir": dir_path}
+        )
+
     # --- Software Management ---
     def get_plugins(self):
         result = self.request("/plugin?action=get_soft_list")
@@ -226,6 +377,22 @@ class BTPanelAPI:
         return self.request(
             "/plugin?action=un_install_plugin", {"s_name": s_name, "version": version}
         )
+
+    # --- System Status ---
+    def get_system_total(self):
+        return self.request("/system?action=GetSystemTotal")
+
+    def get_disk_info(self):
+        return self.request("/system?action=GetDiskInfo")
+
+    def get_network(self):
+        return self.request("/system?action=GetNetWork")
+
+    def get_task_count(self):
+        return self.request("/ajax?action=GetTaskCount")
+
+    def update_panel(self):
+        return self.request("/ajax?action=UpdatePanel")
 
     # --- Security & Firewall ---
     def get_firewall_list(self, page=1, limit=20):
