@@ -170,6 +170,28 @@ class BTPanelAPI:
             },
         )
 
+    def get_docker_logs(self, container_id):
+        """获取 Docker 容器日志"""
+        return self.request(
+            "/project/docker/model",
+            {
+                "url": "unix:///var/run/docker.sock",
+                "dk_model_name": "container",
+                "dk_def_name": "get_logs",
+                "container_id": container_id,
+            },
+        )
+
+    # --- Docker Compose Management ---
+    def docker_compose_cmd(self, path, command):
+        """
+        通过 ExecShell 稳健执行 Docker Compose 命令
+        :param path: docker-compose.yml 所在目录
+        :param command: 指令 (如 up -d, down, restart)
+        """
+        full_cmd = f"cd {path} && docker-compose {command}"
+        return self.exec_shell(full_cmd)
+
     # --- Database Management ---
     def get_databases(self, page=1, limit=20):
         """
@@ -213,6 +235,10 @@ class BTPanelAPI:
             "/database?action=ResDatabasePassword",
             {"id": db_id, "name": name, "password": password},
         )
+
+    def get_database_logs(self):
+        """获取数据库错误日志"""
+        return self.request("/database?action=GetDbErrorLog")
 
     # --- Software Management ---
     def install_software(self, s_name, version):
@@ -324,6 +350,10 @@ class BTPanelAPI:
         清空回收站
         """
         return self.request("/files?action=CloseRecycleBin")
+
+    def get_file_logs(self):
+        """获取文件操作日志"""
+        return self.request("/config?action=get_logs", {"search": "文件"})
 
     def write_file(self, path, content):
         """
