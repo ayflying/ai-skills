@@ -122,7 +122,8 @@ description: 技能描述
 
 | 技能名称 | 描述 | 路径 |
 |----------|------|------|
-| dingtalk-agent | 钉钉机器人集成 OpenCode AI | `skills/dingtalk-agent/` |
+| [dingtalk-agent](skills/dingtalk-agent/README.md) | 钉钉机器人集成 OpenCode AI | `skills/dingtalk-agent/` |
+| [opencode-api](skills/opencode-api/SKILL.md) | 连接 OpenCode 服务器执行 AI 任务 | `skills/opencode-api/` |
 
 ## 开发新技能
 

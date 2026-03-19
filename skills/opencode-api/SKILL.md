@@ -1,14 +1,9 @@
-# opencode-api
-
-## 基本信息
-```yaml
+---
 name: opencode-api
-description: |
-  执行 OpenCode AI 任务，连接到运行中的 OpenCode 服务器执行代码、分析任务或生成内容。
-  当用户需要执行 AI 驱动的任务、生成代码、分析数据或处理复杂指令时使用此技能。
-  必须调用此技能来处理 OpenCode 任务执行。
-  支持连接到本地或远程 OpenCode 服务器。
-```
+description: 执行 OpenCode AI 任务，连接到运行中的 OpenCode 服务器执行代码、分析任务或生成内容。
+---
+
+# opencode-api
 
 ## 功能说明
 此技能提供以下功能：
@@ -46,7 +41,7 @@ python scripts/opencode_runner.py "继续上次的任务" --session "ses_xxx"
 | OPENCODE_SERVER_URL | OpenCode 服务器地址 | http://127.0.0.1:9091 |
 | OPENCODE_MODEL | 使用的模型 | opencode/mimo-v2-omni-free |
 | OPENCODE_SERVER_PASSWORD | OpenCode 服务器密码 | - |
-| OPencode_CLI_PATH | opencode-cli.exe 路径 | D:\Users\ay\AppData\Local\OpenCode\opencode-cli.exe |
+| OPENCODE_CLI_PATH | opencode-cli.exe 路径 | D:\Users\ay\AppData\Local\OpenCode\opencode-cli.exe |
 
 ## 输出格式
 ### JSON 模式 (--json)

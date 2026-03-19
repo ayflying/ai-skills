@@ -15,49 +15,24 @@
 ## 2. 构建、测试与代码检查命令
 
 ### 2.1 DingTalk Agent 技能 (Go 项目)
+... (保持不变) ...
+
+### 2.2 OpenCode API 技能 (Python 项目)
 
 **前提条件**:
-- Go 1.24.1+
+- Python 3.10+
 - 配置 `.env` 文件 (基于 `.env.example`)
 
-**构建与运行**:
+**运行**:
 ```bash
 # 进入技能目录
-cd skills/dingtalk-agent
+cd skills/opencode-api
 
-# 安装依赖
-go mod tidy
-
-# 构建可执行文件
-go build -o dingtalk-agent.exe main.go
-
-# 运行程序
-./dingtalk-agent.exe
+# 运行脚本
+python scripts/opencode_runner.py "任务描述"
 ```
 
-**测试命令**:
-```bash
-# 运行所有测试
-cd skills/dingtalk-agent
-go test -v
-
-# 运行单个测试 (例如 TestParseCommand)
-go test -v -run TestParseCommand
-
-# 运行特定测试用例
-go test -v -run "TestParseCommand|TestOnChatBotMessageReceived"
-```
-
-**代码质量检查**:
-```bash
-# 格式化代码
-go fmt ./...
-
-# 检查代码风格
-go vet ./...
-```
-
-### 2.2 标准化技能安装
+### 2.3 标准化技能安装
 
 **使用 skills CLI**:
 ```bash
