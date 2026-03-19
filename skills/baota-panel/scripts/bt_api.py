@@ -93,6 +93,16 @@ class BTPanelAPI:
             "/site?action=SetPHPVersion", {"siteName": webname, "version": version}
         )
 
+    def apply_let_ssl(self, domain, site_id, auth_type="http", auth_to=None):
+        """申请 Let's Encrypt SSL 证书"""
+        params = {
+            "domains": json.dumps([domain]),
+            "id": site_id,
+            "auth_type": auth_type,
+            "auth_to": auth_to if auth_to else domain,
+        }
+        return self.request("/ssl?action=ApplyLetSSL", params)
+
     # --- Docker Management ---
     def get_docker_containers(self):
         # Using verified path and parameters from exploration
@@ -132,6 +142,30 @@ class BTPanelAPI:
         return self.request(
             "/files?action=WriteFile", {"path": path, "data": encoded_content}
         )
+
+    def get_file_content(self, path):
+        """读取文件内容"""
+        return self.request("/files?action=GetFileBody", {"path": path})
+
+    def download_file(self, remote_path, local_path):
+        """下载远程文件到本地"""
+        result = self.get_file_content(remote_path)
+        if result and result.get("status") is not False:
+            content = result.get("data", "")
+            with open(local_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            return {"status": True, "msg": f"File downloaded to {local_path}"}
+        return result
+
+    def upload_file(self, local_path, remote_path):
+        """上传本地文件到服务器 (使用 WriteFile 方式)"""
+        if not os.path.exists(local_path):
+            return {"status": False, "msg": f"Local file {local_path} not found"}
+
+        with open(local_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        return self.write_file(remote_path, content)
 
     def exec_shell(self, command):
         """执行 shell 命令"""
@@ -260,6 +294,27 @@ if __name__ == "__main__":
     elif action == "files":
         path = args[0] if args else "/"
         print(json.dumps(api.get_files(path), indent=2))
+    elif action == "read_file":
+        if not args:
+            print(
+                json.dumps({"status": False, "msg": "Usage: read_file <remote_path>"})
+            )
+        else:
+            print(json.dumps(api.get_file_content(args[0]), indent=2))
+    elif action == "upload":
+        if len(args) < 2:
+            print(
+                json.dumps(
+                    {"status": False, "msg": "Usage: upload <local_path> <remote_path>"}
+                )
+            )
+        else:
+            print(json.dumps(api.upload_file(args[0], args[1]), indent=2))
+    elif action == "ssl":
+        if len(args) < 2:
+            print(json.dumps({"status": False, "msg": "Usage: ssl <domain> <site_id>"}))
+        else:
+            print(json.dumps(api.apply_let_ssl(args[0], args[1]), indent=2))
     elif action == "plugins":
         print(json.dumps(api.get_plugins(), indent=2))
     elif action == "exec_shell":

@@ -56,6 +56,13 @@
   - `webname`: 网站域名
   - `version`: PHP 版本（如 "74", "80", "00"）
 
+### 申请 SSL 证书 (Let's Encrypt)
+- **方法**: `apply_let_ssl(domain, site_id, auth_type="http")`
+- **辅助脚本命令**: `python scripts/bt_api.py ssl <域名> <ID>`
+- **参数**:
+  - `domain`: 网站域名
+  - `site_id`: 网站 ID
+
 ## 3. 数据库管理
 
 ### 获取数据库列表
@@ -105,6 +112,14 @@
 - **参数**:
   - `path`: 绝对文件路径
   - `content`: 文件文本内容
+
+### 读取文件内容
+- **方法**: `get_file_content(path)`
+- **辅助脚本命令**: `python scripts/bt_api.py read_file <路径>`
+
+### 上传文件
+- **方法**: `upload_file(local_path, remote_path)`
+- **辅助脚本命令**: `python scripts/bt_api.py upload <本地路径> <远程路径>`
 
 ### 执行 Shell 命令
 在服务器上执行 bash 命令。

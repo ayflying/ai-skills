@@ -28,9 +28,12 @@ npx skills add ayflying/ai-skills --skill baota-panel
 - `python scripts/bt_api.py add_site <域名> <路径>` - 创建网站
 - `python scripts/bt_api.py del_site <ID> <域名>` - 删除网站
 - `python scripts/bt_api.py stop_site <ID> <域名>` - 停止网站
+- `python scripts/bt_api.py ssl <域名> <ID>` - 申请 SSL 证书
 - `python scripts/bt_api.py docker` - 列出 Docker 容器
 - `python scripts/bt_api.py databases` - 列出所有数据库
 - `python scripts/bt_api.py files <路径>` - 列出指定目录下的文件
+- `python scripts/bt_api.py read_file <路径>` - 读取文件内容
+- `python scripts/bt_api.py upload <本地路径> <远程路径>` - 上传文件
 
 ## 安全与最佳实践
 - **操作确认**：在执行删除网站或数据库等破坏性操作前，请务必先征得用户同意。
