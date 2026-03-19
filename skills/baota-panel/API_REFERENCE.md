@@ -121,6 +121,10 @@
 - **方法**: `upload_file(local_path, remote_path)`
 - **辅助脚本命令**: `python scripts/bt_api.py upload <本地路径> <远程路径>`
 
+### 下载文件
+- **方法**: `download_file(remote_path, local_path)`
+- **辅助脚本命令**: `python scripts/bt_api.py download <远程路径> <本地路径>`
+
 ### 执行 Shell 命令
 在服务器上执行 bash 命令。
 - **方法**: `exec_shell(command)`

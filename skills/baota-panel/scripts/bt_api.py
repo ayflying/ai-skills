@@ -310,6 +310,18 @@ if __name__ == "__main__":
             )
         else:
             print(json.dumps(api.upload_file(args[0], args[1]), indent=2))
+    elif action == "download":
+        if len(args) < 2:
+            print(
+                json.dumps(
+                    {
+                        "status": False,
+                        "msg": "Usage: download <remote_path> <local_path>",
+                    }
+                )
+            )
+        else:
+            print(json.dumps(api.download_file(args[0], args[1]), indent=2))
     elif action == "ssl":
         if len(args) < 2:
             print(json.dumps({"status": False, "msg": "Usage: ssl <domain> <site_id>"}))
