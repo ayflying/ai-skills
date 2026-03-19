@@ -198,9 +198,24 @@ description: 技能描述
 ---
 ```
 
+**必须包含安装说明**:
+每个技能的 `SKILL.md` 和 `README.md` 必须包含标准化的安装命令，格式如下：
+```bash
+npx skills add ayflying/ai-skills --skill <skill-name>
+```
+
 ---
 
-## 5. Git 工作流
+## 5. 开发核心红线 (Mandatory Rules)
+
+1. **必须包含安装说明**：新增或修改技能时，必须在技能目录下的 `README.md` 和 `SKILL.md` 中写明标准化的 `npx skills add` 安装命令。
+2. **文档同步**：修改技能配置或功能后，必须同步更新主仓库的 `SKILLS.md` 和 `README.md` 中的技能列表。
+3. **安全第一**：严禁提交任何包含敏感信息（如 API Key, Client Secret）的文件，必须使用 `.env.example` 模板。
+4. **标准化格式**：`SKILL.md` 必须使用标准的 YAML Frontmatter 格式，以便被 `skills` CLI 正确识别。
+
+---
+
+## 6. Git 工作流
 
 ### 5.1 提交规范
 
