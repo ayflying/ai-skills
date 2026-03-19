@@ -35,6 +35,27 @@
   - `ftp`: 是否开通 FTP（"true"/"false"）
   - `sql`: 是否开通 SQL 数据库（"true"/"false"）
 
+### 删除网站
+- **方法**: `delete_site(site_id, webname)`
+- **辅助脚本命令**: `python scripts/bt_api.py del_site <ID> <域名>`
+- **参数**:
+  - `site_id`: 网站 ID
+  - `webname`: 网站主域名
+
+### 停止网站
+- **方法**: `set_site_status(site_id, webname, 0)`
+- **辅助脚本命令**: `python scripts/bt_api.py stop_site <ID> <域名>`
+
+### 启动网站
+- **方法**: `set_site_status(site_id, webname, 1)`
+- **辅助脚本命令**: `python scripts/bt_api.py start_site <ID> <域名>`
+
+### 修改 PHP 版本
+- **方法**: `set_php_version(webname, version)`
+- **参数**:
+  - `webname`: 网站域名
+  - `version`: PHP 版本（如 "74", "80", "00"）
+
 ## 3. 数据库管理
 
 ### 获取数据库列表

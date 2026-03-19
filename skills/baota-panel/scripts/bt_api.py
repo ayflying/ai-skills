@@ -74,6 +74,25 @@ class BTPanelAPI:
         }
         return self.request("/site?action=AddSite", params)
 
+    def delete_site(self, site_id, webname):
+        """删除网站"""
+        return self.request(
+            "/site?action=DeleteSite", {"id": site_id, "webname": webname}
+        )
+
+    def set_site_status(self, site_id, webname, status):
+        """设置网站状态 (0: 停止, 1: 启动)"""
+        action = "SiteStop" if status == 0 else "SiteStart"
+        return self.request(
+            f"/site?action={action}", {"id": site_id, "webname": webname}
+        )
+
+    def set_php_version(self, webname, version):
+        """修改网站 PHP 版本"""
+        return self.request(
+            "/site?action=SetPHPVersion", {"siteName": webname, "version": version}
+        )
+
     # --- Docker Management ---
     def get_docker_containers(self):
         # Using verified path and parameters from exploration
@@ -208,6 +227,32 @@ if __name__ == "__main__":
 
     if action == "sites":
         print(json.dumps(api.get_sites(), indent=2))
+    elif action == "add_site":
+        if len(args) < 2:
+            print(
+                json.dumps({"status": False, "msg": "Usage: add_site <domain> <path>"})
+            )
+        else:
+            print(json.dumps(api.create_site(args[0], args[1]), indent=2))
+    elif action == "del_site":
+        if len(args) < 2:
+            print(json.dumps({"status": False, "msg": "Usage: del_site <id> <domain>"}))
+        else:
+            print(json.dumps(api.delete_site(args[0], args[1]), indent=2))
+    elif action == "stop_site":
+        if len(args) < 2:
+            print(
+                json.dumps({"status": False, "msg": "Usage: stop_site <id> <domain>"})
+            )
+        else:
+            print(json.dumps(api.set_site_status(args[0], args[1], 0), indent=2))
+    elif action == "start_site":
+        if len(args) < 2:
+            print(
+                json.dumps({"status": False, "msg": "Usage: start_site <id> <domain>"})
+            )
+        else:
+            print(json.dumps(api.set_site_status(args[0], args[1], 1), indent=2))
     elif action == "docker":
         print(json.dumps(api.get_docker_containers(), indent=2))
     elif action == "databases":

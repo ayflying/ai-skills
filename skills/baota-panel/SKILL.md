@@ -25,6 +25,9 @@ npx skills add ayflying/ai-skills --skill baota-panel
 通过 bash 执行辅助脚本：
 - `python scripts/bt_api.py` - 获取系统概览信息
 - `python scripts/bt_api.py sites` - 列出所有网站
+- `python scripts/bt_api.py add_site <域名> <路径>` - 创建网站
+- `python scripts/bt_api.py del_site <ID> <域名>` - 删除网站
+- `python scripts/bt_api.py stop_site <ID> <域名>` - 停止网站
 - `python scripts/bt_api.py docker` - 列出 Docker 容器
 - `python scripts/bt_api.py databases` - 列出所有数据库
 - `python scripts/bt_api.py files <路径>` - 列出指定目录下的文件
