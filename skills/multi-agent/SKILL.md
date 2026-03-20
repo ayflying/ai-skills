@@ -23,28 +23,37 @@ description: |
    python .agents/skills/multi-agent/scripts/setup.py
    ```
 
+## 自定义代理名称
+
+安装后会在项目根目录生成 `.env` 文件。用户可以通过编辑 `.env` 中的 `_NAME` 变量来自定义各代理的名称。
+
+**修改后需重新运行初始化脚本使配置生效**：
+```bash
+python .agents/skills/multi-agent/scripts/setup.py
+```
+
 ## 协作规范
 
-**身份标识（Mandatory）**：所有代理在输出时必须首先声明其身份。格式为：`[身份名] 消息内容`。
+**身份标识（Mandatory）**：所有代理在输出时必须首先声明其身份。格式为：`[${xxx_NAME}] 消息内容`。
 
-示例：`[Master] 正在分配任务...`
-示例：`[Lead Programmer] 架构设计已完成...`
+示例：`[${master_NAME}] 正在分配任务...`
+示例：`[${lead_programmer_NAME}] 架构设计已完成...`
 
 ## 代理列表
 
-| 代理 | 职责 |
-|------|------|
-| master | **总调度**：只分配任务，不执行任何具体工作（纯任务分配者） |
-| lead-programmer | **主程**：架构设计、任务分配、解决代码冲突、技术栈决策 |
-| planner | **策划**：系统详细设计、逻辑文档、配置文件管理（.env, config） |
-| artist | **美术**：UI/UX 设计、视觉规范、CSS/样式实现、动效建议 |
-| build | 编写和修改功能代码（受主程分配） |
-| plan | 分析需求和初步技术设计方案 |
-| test-writer | 编写测试用例并执行测试 |
-| code-reviewer | 代码审查 |
-| security-auditor | 安全审计 |
-| docs-writer | 编写技术文档 |
-| performance-optimizer | 性能优化 |
+| 代理 | 默认名称 | 职责 |
+|------|---------|------|
+| master | 总调度 | **总调度**：只分配任务，不执行任何具体工作（纯任务分配者） |
+| lead-programmer | 主程 | **主程**：架构设计、任务分配、解决代码冲突、技术栈决策 |
+| planner | 策划 | **策划**：系统详细设计、逻辑文档、配置文件管理（.env, config） |
+| artist | 美术 | **美术**：UI/UX 设计、视觉规范、CSS/样式实现、动效建议 |
+| build | 构建 | 编写和修改功能代码（受主程分配） |
+| plan | 规划 | 分析需求和初步技术设计方案 |
+| test-writer | 测试 | 编写测试用例并执行测试 |
+| code-reviewer | 审查 | 代码审查 |
+| security-auditor | 安全 | 安全审计 |
+| docs-writer | 文档 | 编写技术文档 |
+| performance-optimizer | 性能 | 性能优化 |
 
 
 ## 使用
