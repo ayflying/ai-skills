@@ -13,7 +13,7 @@ npx skills add ayflying/ai-skills --skill baota-panel
 
 ## 核心功能
 - **网站管理**：列出、创建、删除和管理站点。详见 [site.md](references/site.md)。
-- **Docker 管理**：监控容器与管理 Compose。详见 [docker.md](references/docker.md)。
+- **Docker 管理**：监控容器、执行 docker compose 部署。详见 [docker.md](references/docker.md)。
 - **数据库管理**：管理 MySQL 数据库及用户。详见 [database.md](references/database.md)。
 - **文件管理**：读写、上传、下载、压缩及回收站。详见 [files.md](references/files.md)。
 - **系统与安全**：资源状态、软件安装更新、防火墙放行。详见 [system.md](references/system.md) 和 [security.md](references/security.md)。
@@ -26,8 +26,15 @@ npx skills add ayflying/ai-skills --skill baota-panel
 - `python scripts/bt_api.py` - 获取系统概览
 - `python scripts/bt_api.py sites` - 列出网站
 - `python scripts/bt_api.py docker` - 容器状态
-- `python scripts/bt_api.py read_file <路径>` - 读取文件
-- `python scripts/test_compose.py` - **测试脚本**：演示容器编排的创建、日志查看及清理全流程。
+- `python scripts/bt_api.py exec_shell <命令>` - 执行 shell 命令
+
+### Docker Compose 部署
+使用 `bt_api.py` 的 `docker_compose` 方法部署：
+```python
+api.docker_compose("/www/docker/myapp", "up")      # 启动
+api.docker_compose("/www/docker/myapp", "down")    # 停止
+api.docker_compose("/www/docker/myapp", "logs")    # 查看日志
+```
 
 详见 [common.md](references/common.md) 了解 API 规范。
 
