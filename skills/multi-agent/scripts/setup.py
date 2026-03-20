@@ -34,8 +34,9 @@ def setup_multi_agent():
         skill_root = parent
 
     if not os.path.exists(os.path.join(skill_root, ".opencode", "agents")):
-        print(f"[!] 错误: 无法找到 .opencode/agents 目录")
-        sys.exit(1)
+        # 技能目录下没有 .opencode/agents，直接在 skill_root 下创建
+        os.makedirs(os.path.join(skill_root, ".opencode", "agents"), exist_ok=True)
+        print(f"[*] 已创建技能目录: {os.path.join(skill_root, '.opencode', 'agents')}")
 
     skill_agents_dir = os.path.join(skill_root, ".opencode", "agents")
 
