@@ -21,7 +21,7 @@ def substitute_env_vars(content, env_map):
 
 def setup_multi_agent():
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    skill_root = os.path.dirname(script_dir)
+    skill_root = os.path.dirname(os.path.dirname(script_dir))
     skill_agents_dir = os.path.join(skill_root, ".opencode", "agents")
 
     # 获取当前工作区根目录
