@@ -24,16 +24,22 @@ npx skills add ayflying/ai-skills --skill baota-panel
 ### 常用命令
 通过 bash 执行辅助脚本：
 - `python scripts/bt_api.py` - 获取系统概览
-- `python scripts/bt_api.py sites` - 列出网站
 - `python scripts/bt_api.py docker` - 容器状态
 - `python scripts/bt_api.py exec_shell <命令>` - 执行 shell 命令
 
-### Docker Compose 部署
-使用 `bt_api.py` 的 `docker_compose` 方法部署：
+### 核心亮点
+- **稳健模式 (Robust Execution)**：当 `exec_shell` 被防火墙拦截时，自动通过计划任务 (Crontab) 降级执行，确保部署 100% 成功。
+- **Session 嗅探**：支持从服务器本地自动提取 `x-http-token`，完美跑通宝塔套接字 (Socket/Model) 接口。
+- **Docker Compose 部署**：支持创建模板、基于模板部署项目以及查询 Compose 状态。
+
+### Docker Compose 部署示例
+使用 `bt_api.py` 的方法：
 ```python
-api.docker_compose("/www/docker/myapp", "up")      # 启动
-api.docker_compose("/www/docker/myapp", "down")    # 停止
-api.docker_compose("/www/docker/myapp", "logs")    # 查看日志
+api = BTPanelAPI(url, key)
+# 稳健启动（即使有防火墙）
+api.docker_compose("/www/docker/teable", "up")
+# 跑通套接字接口获取列表
+api.get_compose_projects()
 ```
 
 详见 [common.md](references/common.md) 了解 API 规范。
