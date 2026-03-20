@@ -20,8 +20,23 @@ def substitute_env_vars(content, env_map):
 
 
 def setup_multi_agent():
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    skill_root = os.path.dirname(os.path.dirname(script_dir))
+    # 自动查找技能根目录（向上查找包含 .opencode/agents 和 .env.example 的目录）
+    script_path = os.path.abspath(__file__)
+    skill_root = os.path.dirname(script_path)
+    while skill_root:
+        agents_dir = os.path.join(skill_root, ".opencode", "agents")
+        env_example = os.path.join(skill_root, ".env.example")
+        if os.path.exists(agents_dir) and os.path.exists(env_example):
+            break
+        parent = os.path.dirname(skill_root)
+        if parent == skill_root:  # 到达根目录
+            break
+        skill_root = parent
+
+    if not os.path.exists(os.path.join(skill_root, ".opencode", "agents")):
+        print(f"[!] 错误: 无法找到 .opencode/agents 目录")
+        sys.exit(1)
+
     skill_agents_dir = os.path.join(skill_root, ".opencode", "agents")
 
     # 获取当前工作区根目录
