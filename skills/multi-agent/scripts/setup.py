@@ -70,10 +70,12 @@ def setup_multi_agent():
             if env_map:
                 content = substitute_env_vars(content, env_map)
 
+            # 直接覆盖已存在的文件
             with open(dst_file, "w", encoding="utf-8") as f:
                 f.write(content)
 
-            print(f"    - 已部署: {filename}")
+            action = "覆盖" if os.path.exists(dst_file) else "创建"
+            print(f"    - {action}: {filename}")
 
     # 复制 .env.example 为 .env（如果目标项目没有 .env）
     env_example = os.path.join(skill_root, ".env.example")
