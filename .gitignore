@@ -37,8 +37,8 @@ dingtalk-agent.exe
 .env.local
 .env.*.local
 
-# OpenCode IDE configuration
-.opencode/
+# OpenCode IDE configuration (仅根目录，项目本地的 IDE 配置不应提交)
+/.opencode/
 
 # OS
 .DS_Store
