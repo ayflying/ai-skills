@@ -54,8 +54,8 @@ def setup_multi_agent():
     print(f"[*] 目标目录: {target_agents_dir}")
 
     if not os.path.exists(skill_agents_dir):
-        print(f"[!] 错误: 未找到源代理配置目录 {skill_agents_dir}")
-        sys.exit(1)
+        os.makedirs(skill_agents_dir, exist_ok=True)
+        print(f"[*] 已创建目录")
 
     if not os.path.exists(target_agents_dir):
         os.makedirs(target_agents_dir)
