@@ -25,6 +25,10 @@ ai-skills/
         ├── SKILL.md       # 技能核心文档
         ├── scripts/       # Python 脚本
         └── .env.example   # 配置模板
+    └── jimeng-ai-generator/ # 即梦 AI 批量生成技能
+        ├── SKILL.md       # 技能核心文档
+        ├── assets/        # 浏览器扩展
+        └── scripts/       # 任务服务器
 ```
 
 ## 技能详情
@@ -92,6 +96,19 @@ ai-skills/
 
 **使用方式**:
 详见 `skills/wechat-bot/SKILL.md`
+
+### jimeng-ai-generator
+
+**描述**: 即梦 AI 批量生成技能，通过浏览器插件自动化执行生成任务
+
+**功能**:
+- 通过浏览器插件接管真实用户环境，避开机器人检测
+- 批量处理文生图、图生图、文生视频、图生视频任务
+- 内置本地任务服务器，管理生成队列与素材
+- 自动处理模型切换、关键词填写与结果监控
+
+**使用方式**:
+详见 `skills/jimeng-ai-generator/SKILL.md`
 
 ## 如何添加新技能
 

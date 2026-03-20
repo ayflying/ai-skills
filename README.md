@@ -13,6 +13,7 @@
 | [baota-panel](skills/baota-panel/README.md) | 通过宝塔面板 API 管理服务器资源 | `skills/baota-panel/` |
 | [casdoor-integration](skills/casdoor-integration/README.md) | 通用的 Casdoor SSO/IAM 集成指南 | `skills/casdoor-integration/` |
 | [wechat-bot](skills/wechat-bot/README.md) | 微信机器人，基于wxpy实现个人微信自动化 | `skills/wechat-bot/` |
+| [jimeng-ai-generator](skills/jimeng-ai-generator/README.md) | 即梦 AI 批量生成任务自动化 | `skills/jimeng-ai-generator/` |
 
 ## 使用方式
 

@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "即梦AI批量生成助手",
+  "version": "1.16",
+  "description": "跨标签锁定稳健版 v1.16",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://jimeng.jianying.com/*",
+    "http://localhost:18542/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://jimeng.jianying.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
