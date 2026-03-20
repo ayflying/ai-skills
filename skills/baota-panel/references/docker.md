@@ -50,3 +50,13 @@
   | `dk_def_name` | string | `create` |
   | `project_name` | string | 项目名 |
   | `template_id` | int | 模板 ID |
+
+## 6. 删除 Compose 项目
+- **URL**: `/project/docker/model`
+- **Method**: `POST`
+- **参数**:
+  | 参数名 | 类型 | 说明 |
+  |----------|------|------|
+  | `dk_model_name` | string | `compose` |
+  | `dk_def_name` | string | `remove` |
+  | `project_id` | int | 项目 ID |

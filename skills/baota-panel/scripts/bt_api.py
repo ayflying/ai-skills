@@ -322,6 +322,11 @@ class BTPanelAPI:
         cmd = f"""/www/server/panel/pyenv/bin/python3.7 -c "import sys; sys.path.append('/www/server/panel/class'); from btdockerModel.composeModel import main; get=type('get',(object,),{{'project_name':'{project_name}','template_id':'{template_id}','remark':'{remark}'}}); print(main().create(get))\""""
         return self.robust_exec_shell(cmd)
 
+    def delete_compose_project(self, project_id):
+        """删除 Docker Compose 项目"""
+        params = {"project_id": project_id}
+        return self.docker_request("compose", "remove", params)
+
     # --- Database Management ---
     def get_databases(self, page=1, limit=20):
         return self.request(
