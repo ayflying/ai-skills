@@ -1,6 +1,6 @@
 ---
 description: 主程代理（${LEAD_PROGRAMMER_NAME}），程序任务的唯一分配者，只能有一个
-mode: primary
+mode: subagent
 permission:
   edit: allow
   bash: allow
