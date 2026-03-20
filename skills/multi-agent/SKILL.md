@@ -20,7 +20,7 @@ description: |
 2. **初始化 IDE 代理（首次或更新时执行）**：
    运行初始化脚本，将代理配置部署到项目根目录，以便 OpenCode 识别：
    ```bash
-   python skills/multi-agent/scripts/setup.py
+   python .agents/skills/multi-agent/scripts/setup.py
    ```
 
 ## 协作规范
@@ -34,7 +34,7 @@ description: |
 
 | 代理 | 职责 |
 |------|------|
-| master | **总调度**：负责多代理并行协作的整体控制与任务拆解 |
+| master | **总调度**：只分配任务，不执行任何具体工作（纯任务分配者） |
 | lead-programmer | **主程**：架构设计、任务分配、解决代码冲突、技术栈决策 |
 | planner | **策划**：系统详细设计、逻辑文档、配置文件管理（.env, config） |
 | artist | **美术**：UI/UX 设计、视觉规范、CSS/样式实现、动效建议 |

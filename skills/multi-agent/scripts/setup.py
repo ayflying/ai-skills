@@ -4,12 +4,16 @@ import sys
 
 
 def setup_multi_agent():
-    # 获取项目根目录 (假设脚本在 skills/multi-agent/scripts/ 目录下)
+    # 获取脚本所在目录（技能安装后位于 .agents/skills/multi-agent/scripts/）
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    skill_agents_dir = os.path.join(script_dir, "..", ".opencode", "agents")
 
-    # 获取当前工作区根目录 (这里我们向上查找直到找到 .git 目录或到达根目录)
-    project_root = script_dir
+    # 技能安装目录结构：.agents/skills/multi-agent/scripts/setup.py
+    # 因此向上两级得到技能根目录：.agents/skills/multi-agent/
+    skill_root = os.path.dirname(os.path.dirname(script_dir))
+    skill_agents_dir = os.path.join(skill_root, ".opencode", "agents")
+
+    # 获取当前工作区根目录 (向上查找直到找到 .git 目录或到达根目录)
+    project_root = os.getcwd()
     while project_root != os.path.dirname(project_root):
         if os.path.exists(os.path.join(project_root, ".git")):
             break
