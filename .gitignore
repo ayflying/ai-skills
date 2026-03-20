@@ -37,6 +37,9 @@ dingtalk-agent.exe
 .env.local
 .env.*.local
 
+# OpenCode IDE configuration
+.opencode/
+
 # OS
 .DS_Store
 Thumbs.db

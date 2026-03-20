@@ -195,15 +195,69 @@ ai-skills/
 ```yaml
 ---
 name: skill-name
-description: 技能描述
+description: |
+  技能描述（做什么）
+  Use when: (1) 触发条件1 (2) 触发条件2 (3) 触发条件3
 ---
 ```
 
+**description 规范**:
+- 必须包含技能做什么
+- 必须包含 `Use when:` 触发条件（这是技能被调用的关键）
+- 示例：`"OpenCode 多代理并行协作配置。Use when: (1) 需要多个代理并行工作 (2) 需要配置 orchestrator 调度 (3) 需要实现流水线模式"`
+
+**正文规范**:
+- 使用命令式/不定式形式
+- 保持简洁，500 行以内
+- 只包含必要的指令，不要重复 description 的内容
+
 **必须包含安装说明**:
-每个技能的 `SKILL.md` 和 `README.md` 必须包含标准化的安装命令，格式如下：
 ```bash
 npx skills add ayflying/ai-skills --skill <skill-name>
 ```
+
+### 4.4 技能目录结构
+
+```
+skills/<skill-name>/
+├── SKILL.md (必须)           # 技能说明 + 安装命令
+├── scripts/ (可选)           # 可执行脚本
+├── references/ (可选)        # 参考文档（按需加载）
+├── assets/ (可选)            # 模板、图标等资源
+└── .opencode/agents/ (可选)  # OpenCode 代理配置
+```
+
+**不要包含**:
+- README.md
+- INSTALLATION_GUIDE.md
+- QUICK_REFERENCE.md
+- CHANGELOG.md
+- 其他辅助文档
+
+### 4.5 OpenCode 代理配置
+
+代理配置放在 `.opencode/agents/` 目录，格式：
+
+```yaml
+---
+description: 代理描述
+mode: primary/subagent
+permission:
+  edit: allow/ask/deny
+  bash: allow/ask/deny
+  write: allow/ask/deny
+---
+
+你是 xxx 代理，负责...
+
+- 简洁的职责说明
+- 关键规则
+```
+
+**代理配置原则**:
+- 精简，15-25 行
+- 使用命令式
+- 只包含必要的指令
 
 ---
 
@@ -214,6 +268,7 @@ npx skills add ayflying/ai-skills --skill <skill-name>
 3. **文档同步**：修改技能配置或功能后，必须同步更新主仓库的 `SKILLS.md` 和 `README.md` 中的技能列表。
 4. **安全第一**：严禁提交任何包含敏感信息（如 API Key, Client Secret）的文件，必须使用 `.env.example` 模板。
 5. **标准化格式**：`SKILL.md` 必须使用标准的 YAML Frontmatter 格式，以便被 `skills` CLI 正确识别。
+6. **沟通规范**：与用户交流及在代码注释、文档中，**必须**全程使用中文。
 
 ---
 
@@ -300,3 +355,37 @@ A:
 2. 添加 `SKILL.md` (遵循 YAML frontmatter 格式)
 3. 更新 `SKILL_INSTALL.md` 和 `README.md`
 4. 提交到 GitHub
+
+---
+
+## 9. 技能设计原则
+
+### 9.1 简洁原则
+
+**核心理念**: AI 已经很聪明，只添加 AI 不知道的内容。
+
+- 每个字都要有价值，挑战每个段落："这真的需要吗？"
+- 优先使用简洁示例，而非冗长解释
+- SKILL.md 正文保持在 500 行以内
+
+### 9.2 渐进式披露
+
+技能使用三级加载系统：
+
+1. **元数据 (name + description)** - 始终在上下文中（~100 词）
+2. **SKILL.md 正文** - 技能触发后加载（<5k 词）
+3. **捆绑资源** - 按需加载（scripts/references/assets）
+
+**拆分策略**:
+- 支持多种变体时，核心流程放 SKILL.md，变体细节放 references/
+- 大文件（>100 行）顶部加目录索引
+- 引用深度不超过一级
+
+### 9.3 资源目录说明
+
+| 目录 | 用途 | 示例 |
+|------|------|------|
+| `scripts/` | 可执行脚本，需确定性执行的任务 | `scripts/rotate_pdf.py` |
+| `references/` | 参考文档，按需加载到上下文 | `references/api_docs.md` |
+| `assets/` | 输出使用的文件，不加载到上下文 | `assets/template.html` |
+| `.opencode/agents/` | OpenCode 代理配置 | `agents/orchestrator.md` |

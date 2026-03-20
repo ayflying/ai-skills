@@ -16,7 +16,7 @@ ai-skills/
         └── scripts/       # Python 脚本
     └── baota-panel/       # 宝塔面板管理技能
         ├── SKILL.md       # 技能核心文档
-        ├── docs/          # 模块化技术文档
+        ├── references/    # 模块化参考文档
         └── scripts/       # API 脚本
     └── casdoor-integration/ # Casdoor SSO 集成指南
         ├── SKILL.md       # 技能核心文档
@@ -29,6 +29,14 @@ ai-skills/
         ├── SKILL.md       # 技能核心文档
         ├── assets/        # 浏览器扩展
         └── scripts/       # 任务服务器
+    └── multi-agent/       # 多代理并行协作技能
+        ├── SKILL.md       # 技能核心文档
+        ├── scripts/       # 初始化脚本 (setup.py)
+        └── .opencode/     # 代理配置文件
+    └── ollama/            # Ollama 本地模型调用
+        ├── SKILL.md       # 技能核心文档
+        ├── scripts/       # Python 脚本
+        └── .env.example   # 配置模板
 ```
 
 ## 技能详情
@@ -82,7 +90,7 @@ ai-skills/
 - 前端构建陷阱与环境变量注入方案
 
 **使用方式**:
-详见 `skills/casdoor-integration/README.md`
+详见 `skills/casdoor-integration/SKILL.md`
 
 ### wechat-bot
 
@@ -110,6 +118,45 @@ ai-skills/
 
 **使用方式**:
 详见 `skills/jimeng-ai-generator/SKILL.md`
+
+### multi-agent
+
+**描述**: OpenCode 多代理并行协作配置，支持多个代理同时工作
+
+**功能**:
+- 并行工作模式：开发写完一个功能，测试立即开始，开发继续下一个
+- 流水线模式：多代理按流水线协作
+- 灵活调度：master 根据任务自动调度
+
+**代理列表**:
+- master: 总调度，负责多代理并行协作的整体控制与任务拆解
+- lead-programmer: 主程，架构设计与任务分配
+- planner: 策划，系统详细设计与逻辑文档
+- artist: 美术，UI/UX 设计与样式实现
+- build: 编写代码
+- plan: 设计方案
+- test-writer: 编写和执行测试
+- code-reviewer: 代码审查
+- security-auditor: 安全审计
+- docs-writer: 编写文档
+- performance-optimizer: 性能优化
+
+**使用方式**:
+1. 初始化 IDE 环境：`python skills/multi-agent/scripts/setup.py`
+2. 详见 `skills/multi-agent/SKILL.md`
+
+### ollama
+
+**描述**: 调用 Ollama 本地模型，支持特定实例和模型（如 qwen3.5:9b）。
+
+**功能**:
+- 通过 Python 脚本调用 Ollama API
+- 支持文本生成和多模型选择
+- 灵活配置 API 地址和默认模型
+- 可集成到其他 AI 工作流中
+
+**使用方式**:
+详见 `skills/ollama/SKILL.md`
 
 ## 如何添加新技能
 
