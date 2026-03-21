@@ -3,20 +3,20 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "opencode 执行 'echo hello'",
-      "expected_output": "执行成功，返回 hello",
+      "prompt": "opencode-api 执行 'echo hello'",
+      "expected_output": "返回 JSON 格式结果，包含 success 和 output 字段",
       "files": []
     },
     {
       "id": 2,
-      "prompt": "opencode 执行 '分析代码性能'",
-      "expected_output": "返回分析结果或错误信息",
+      "prompt": "opencode-api 创建新会话并发送消息 '你好'",
+      "expected_output": "返回 session_id 和 AI 响应",
       "files": []
     },
     {
       "id": 3,
-      "prompt": "opencode 执行 '生成 Python 函数'",
-      "expected_output": "返回生成的代码或错误信息",
+      "prompt": "opencode-api 异步发送消息不等待响应",
+      "expected_output": "返回 async: true",
       "files": []
     }
   ]
