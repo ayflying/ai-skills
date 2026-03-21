@@ -14,7 +14,6 @@
 | [casdoor-integration](skills/casdoor-integration/SKILL.md) | 通用的 Casdoor SSO/IAM 集成指南 | `skills/casdoor-integration/` |
 | [wechat-bot](skills/wechat-bot/SKILL.md) | 微信机器人，基于wxpy实现个人微信自动化 | `skills/wechat-bot/` |
 | [jimeng-ai-generator](skills/jimeng-ai-generator/SKILL.md) | 即梦 AI 批量生成任务自动化 | `skills/jimeng-ai-generator/` |
-| [multi-agent](skills/multi-agent/SKILL.md) | OpenCode 多代理并行协作配置 | `skills/multi-agent/` |
 | [ollama](skills/ollama/SKILL.md) | 调用 Ollama 本地模型 (qwen3.5:9b) | `skills/ollama/` |
 
 ## 使用方式
