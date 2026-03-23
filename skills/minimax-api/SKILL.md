@@ -96,6 +96,8 @@ response = requests.post(
 
 ### 4. 图像生成
 
+#### 文生图 (Text-to-Image)
+
 ```python
 response = requests.post(
     f"{MINIMAX_API_HOST}/v1/image_v2",
@@ -103,6 +105,26 @@ response = requests.post(
     json={
         "model": "image-01",
         "prompt": "一只可爱的猫咪",
+        "aspect_ratio": "1:1"
+    }
+)
+```
+
+#### 图生图 (Image-to-Image)
+
+```python
+# 读取参考图像并转为 base64
+import base64
+with open("input.jpg", "rb") as f:
+    image_base64 = base64.b64encode(f.read()).decode()
+
+response = requests.post(
+    f"{MINIMAX_API_HOST}/v1/image_i2i",
+    headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"},
+    json={
+        "model": "image-01",
+        "image_parts": [{"type": "base64", "data": image_base64}],
+        "prompt": "将这只猫变成卡通风格",
         "aspect_ratio": "1:1"
     }
 )

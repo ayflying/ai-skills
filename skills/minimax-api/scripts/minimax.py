@@ -67,11 +67,31 @@ class MiniMaxAPI:
         return response.json()
 
     def image_generate(self, prompt, model="image-01", aspect_ratio="1:1"):
-        """图像生成"""
+        """文生图 (Text-to-Image)"""
         response = requests.post(
             f"{self.host}/v1/image_v2",
             headers=self._headers(),
             json={"model": model, "prompt": prompt, "aspect_ratio": aspect_ratio},
+            timeout=60,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def image_i2i(self, image_path, prompt, model="image-01", aspect_ratio="1:1"):
+        """图生图 (Image-to-Image)"""
+        import base64
+
+        with open(image_path, "rb") as f:
+            image_base64 = base64.b64encode(f.read()).decode()
+        response = requests.post(
+            f"{self.host}/v1/image_i2i",
+            headers=self._headers(),
+            json={
+                "model": model,
+                "image_parts": [{"type": "base64", "data": image_base64}],
+                "prompt": prompt,
+                "aspect_ratio": aspect_ratio,
+            },
             timeout=60,
         )
         response.raise_for_status()
@@ -115,9 +135,14 @@ def main():
     clone = subparsers.add_parser("clone-upload", help="上传音频用于克隆")
     clone.add_argument("file", help="音频文件路径")
 
-    img = subparsers.add_parser("image", help="图像生成")
+    img = subparsers.add_parser("image", help="文生图")
     img.add_argument("prompt", help="图像描述")
     img.add_argument("--ratio", default="1:1", help="宽高比")
+
+    i2i = subparsers.add_parser("i2i", help="图生图")
+    i2i.add_argument("image", help="参考图像路径")
+    i2i.add_argument("prompt", help="图像描述/修改指令")
+    i2i.add_argument("--ratio", default="1:1", help="宽高比")
 
     video = subparsers.add_parser("video", help="视频生成")
     video.add_argument("prompt", help="视频描述")
@@ -147,6 +172,10 @@ def main():
 
         elif args.command == "image":
             result = client.image_generate(args.prompt, aspect_ratio=args.ratio)
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+
+        elif args.command == "i2i":
+            result = client.image_i2i(args.image, args.prompt, aspect_ratio=args.ratio)
             print(json.dumps(result, indent=2, ensure_ascii=False))
 
         elif args.command == "video":
