@@ -1,6 +1,8 @@
 ---
 name: jimeng-ai-generator
-description: 通过浏览器插件接管原生 Edge/Chrome 窗口，批量执行即梦 AI（文生图、图生图、视频生成）任务的高级自动化技能。
+description: |
+  通过浏览器插件批量执行即梦 AI（文生图、图生图、视频生成）任务的自动化技能。
+  Use when: (1) 需要批量生成 AI 图片 (2) 需要批量生成 AI 视频 (3) 需要自动化即梦 AI 任务
 ---
 
 # Jimeng AI Universal Generator (即梦 AI 全能生成)

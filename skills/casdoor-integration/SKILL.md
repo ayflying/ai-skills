@@ -1,6 +1,8 @@
 ---
 name: casdoor-integration
-description: 通用的 Casdoor SSO/IAM 集成指南。支持跨语言 OAuth2/OIDC 认证逻辑。核心能力包括：(1) 兼容内置用户系统的账户关联 (Account Linking)，(2) 深度用户组与组织架构同步，(3) 自动化权限映射与冲突处理，(4) 解决复杂框架下的 Session 竞争与构建期环境变量固化等实战陷阱。
+description: |
+  通用的 Casdoor SSO/IAM 集成指南。支持跨语言 OAuth2/OIDC 认证逻辑。
+  Use when: (1) 需要集成 Casdoor 单点登录 (2) 需要实现 OAuth2/OIDC 认证 (3) 需要用户组和组织架构同步 (4) 需要处理 Session 管理和权限映射
 ---
 
 # Casdoor 全功能通用集成指南

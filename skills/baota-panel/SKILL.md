@@ -1,6 +1,8 @@
 ---
 name: baota-panel
-description: 通过宝塔 (BT) 面板 API 管理服务器资源。支持网站管理、Docker 编排、数据库运维及文件管理。具备自动绕过防火墙和 Session 嗅探能力。
+description: |
+  通过宝塔 (BT) 面板 API 管理服务器资源。支持网站管理、Docker 编排、数据库运维及文件管理。具备自动绕过防火墙和 Session 嗅探能力。
+  Use when: (1) 需要管理宝塔面板上的网站 (2) 需要管理 Docker 容器和编排 (3) 需要管理数据库 (4) 需要远程操作服务器文件
 ---
 
 # 宝塔面板管理专家
