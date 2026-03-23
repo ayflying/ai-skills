@@ -14,6 +14,10 @@ ai-skills/
     └── opencode-api/      # OpenCode API 技能
         ├── SKILL.md       # 技能核心文档
         └── scripts/       # Python 脚本
+    └── minimax-api/       # MiniMax 多模态 AI 技能
+        ├── SKILL.md       # 技能核心文档
+        ├── references/    # API 指南和模型列表
+        └── scripts/       # Python 客户端
     └── baota-panel/       # 宝塔面板管理技能
         ├── SKILL.md       # 技能核心文档
         ├── references/    # 模块化参考文档
@@ -61,6 +65,20 @@ ai-skills/
 
 **使用方式**:
 详见 `skills/opencode-api/SKILL.md`
+
+### minimax-api
+
+**描述**: MiniMax 多模态 AI API 集成，支持文本生成、语音合成、语音克隆、图像生成、视频生成和音乐创作。
+
+**功能**:
+- 文本生成（Anthropic 兼容 API）
+- 语音合成 (TTS) 和语音克隆
+- 文生图、图生图
+- 视频生成（异步任务）
+- 音乐生成
+
+**使用方式**:
+详见 `skills/minimax-api/SKILL.md`
 
 ### baota-panel
 
