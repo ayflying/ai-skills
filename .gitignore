@@ -44,6 +44,13 @@ dingtalk-agent.exe
 .DS_Store
 Thumbs.db
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+output*.jpg
+output*.png
+
 # Windows special files
 nul
 con
