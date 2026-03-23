@@ -86,7 +86,7 @@ response = requests.post(
 
 ```python
 response = requests.post(
-    f"{MINIMAX_API_HOST}/v1/image_v2",
+    f"{MINIMAX_API_HOST}/v1/image_generation",
     headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"},
     json={
         "model": "image-01",
@@ -97,7 +97,27 @@ response = requests.post(
 print(response.json())
 ```
 
-支持的宽高比：`1:1`, `16:9`, `9:16`, `4:3`, `3:4`
+### 下载图片到本地
+
+```python
+import requests
+
+# 生成图片
+response = requests.post(
+    f"{MINIMAX_API_HOST}/v1/image_generation",
+    headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"},
+    json={"model": "image-01", "prompt": "一只可爱的猫咪", "aspect_ratio": "1:1"}
+)
+result = response.json()
+
+# 从响应中提取 URL 并下载
+image_url = result["data"]["image_urls"][0]
+img_resp = requests.get(image_url)
+with open("output.jpg", "wb") as f:
+    f.write(img_resp.content)
+```
+
+支持的宽高比：`1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`, `21:9`
 
 ## 图生图 (Image-to-Image)
 
@@ -191,13 +211,22 @@ python scripts/minimax.py tts "你好，世界" --voice-id your_voice_id
 # 上传克隆声音
 python scripts/minimax.py clone-upload audio.wav
 
-# 文生图
+# 文生图 (仅返回 JSON)
 python scripts/minimax.py image "一只可爱的猫咪" --ratio 16:9
 
-# 图生图
-python scripts/minimax.py i2i input.jpg "变成卡通风格" --ratio 1:1
+# 文生图 + 自动下载
+python scripts/minimax.py image "一只可爱的猫咪" --download
 
-# 视频生成
+# 文生图 + 指定输出路径
+python scripts/minimax.py image "一只可爱的猫咪" -o cat.jpg
+
+# 图生图 + 自动下载
+python scripts/minimax.py i2i input.jpg "变成卡通风格" --download
+
+# 图生图 + 指定输出路径
+python scripts/minimax.py i2i input.jpg "变成卡通风格" -o output.jpg
+
+# 视频生成 (返回 task_id)
 python scripts/minimax.py video "日出时分，海浪拍打沙滩"
 
 # 查询视频状态

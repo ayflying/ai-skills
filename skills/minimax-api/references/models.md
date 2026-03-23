@@ -44,8 +44,7 @@
 | 文本生成 | `POST {host}/anthropic/v1/messages` |
 | 语音合成 | `POST {host}/v1/t2a_v2` |
 | 语音克隆上传 | `POST {host}/v1/voice_cloning/upload` |
-| 文生图 | `POST {host}/v1/image_v2` |
-| 图生图 | `POST {host}/v1/image_i2i` |
+| 文生图/图生图 | `POST {host}/v1/image_generation` |
 | 视频生成 | `POST {host}/v1/video_generation` |
 | 视频查询 | `GET {host}/v1/video_generation/{task_id}` |
 | 音乐生成 | `POST {host}/v1/music_generation` |

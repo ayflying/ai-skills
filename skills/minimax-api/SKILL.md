@@ -38,17 +38,26 @@ npx skills add ayflying/ai-skills --skill minimax-api
 # 文本对话
 python scripts/minimax.py chat "你好"
 
-# 文生图
-python scripts/minimax.py image "一只可爱的猫咪"
+# 文生图 (自动下载到本地)
+python scripts/minimax.py image "一只可爱的猫咪" --download
 
-# 图生图
-python scripts/minimax.py i2i input.jpg "变成卡通风格"
+# 文生图 (指定输出路径)
+python scripts/minimax.py image "一只可爱的猫咪" -o cat.jpg
+
+# 图生图 (自动下载)
+python scripts/minimax.py i2i input.jpg "变成卡通风格" --download
+
+# 图生图 (指定输出路径)
+python scripts/minimax.py i2i input.jpg "变成卡通风格" -o output.jpg
 
 # 语音合成
 python scripts/minimax.py tts "你好，世界"
 
-# 视频生成
+# 视频生成 (异步，返回 task_id)
 python scripts/minimax.py video "日出时分，海浪拍打沙滩"
+
+# 查询视频状态
+python scripts/minimax.py video-query <task_id>
 ```
 
 ## API 端点速查
