@@ -10,7 +10,7 @@ import json
 import argparse
 import requests
 
-DEFAULT_HOST = "https://api.minimax.io"
+DEFAULT_HOST = "https://api.minimaxi.com"
 
 
 class MiniMaxAPI:

@@ -26,11 +26,11 @@ npx skills add ayflying/ai-skills --skill minimax-api
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
 | `MINIMAX_API_KEY` | API Key | - |
-| `MINIMAX_API_HOST` | API 地址 | `https://api.minimax.io` (国际) |
+| `MINIMAX_API_HOST` | API 地址 | `https://api.minimaxi.com` (国内) |
 
 地区对应：
-- 国际: `https://api.minimax.io`
 - 国内: `https://api.minimaxi.com`
+- 国际: `https://api.minimax.io`
 
 ## 快速使用
 
