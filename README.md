@@ -8,7 +8,6 @@
 
 | 技能名称 | 描述 | 路径 |
 |----------|------|------|
-| [dingtalk-agent](skills/dingtalk-agent/SKILL.md) | 钉钉机器人集成 OpenCode AI | `skills/dingtalk-agent/` |
 | [opencode-api](skills/opencode-api/SKILL.md) | 连接 OpenCode 服务器执行 AI 任务 | `skills/opencode-api/` |
 | [minimax-api](skills/minimax-api/SKILL.md) | MiniMax 多模态 AI API 集成 | `skills/minimax-api/` |
 | [baota-panel](skills/baota-panel/SKILL.md) | 通过宝塔面板 API 管理服务器资源 | `skills/baota-panel/` |

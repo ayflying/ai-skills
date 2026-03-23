@@ -8,9 +8,6 @@ ai-skills/
 ├── SKILLS.md              # 技能列表（本文件）
 ├── .gitignore             # Git 忽略文件
 └── skills/
-    └── dingtalk-agent/    # 钉钉机器人技能
-        ├── SKILL.md       # 技能核心文档
-        └── scripts/       # Go 源代码与编译
     └── opencode-api/      # OpenCode API 技能
         ├── SKILL.md       # 技能核心文档
         └── scripts/       # Python 脚本
@@ -40,19 +37,6 @@ ai-skills/
 ```
 
 ## 技能详情
-
-### dingtalk-agent
-
-**描述**: 钉钉机器人集成 OpenCode AI
-
-**功能**:
-- 钉钉群聊机器人集成
-- 通过 `@机器人` 发送任务消息
-- OpenCode AI 执行任务并将结果推回钉钉群
-- 群聊共享上下文和用户独立模式开关
-
-**使用方式**:
-详见 `skills/dingtalk-agent/SKILL.md`
 
 ### opencode-api
 
