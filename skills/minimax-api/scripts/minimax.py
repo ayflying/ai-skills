@@ -10,6 +10,13 @@ import json
 import argparse
 import requests
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
 DEFAULT_HOST = "https://api.minimaxi.com"
 
 
@@ -124,6 +131,26 @@ class MiniMaxAPI:
         return response.json()
 
 
+def _download_image(result, output_path=None):
+    """下载图片到本地"""
+    image_urls = result.get("data", {}).get("image_urls", [])
+    if not image_urls:
+        print("No image URLs in response", file=sys.stderr)
+        return
+
+    for i, url in enumerate(image_urls):
+        ext = "jpg"
+        if ".png" in url:
+            ext = "png"
+        path = output_path or f"output_{i}.{ext}"
+        print(f"Downloading to {path}...")
+        resp = requests.get(url)
+        resp.raise_for_status()
+        with open(path, "wb") as f:
+            f.write(resp.content)
+        print(f"Saved to {path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="MiniMax API 工具")
     subparsers = parser.add_subparsers(dest="command", help="可用命令")
@@ -143,11 +170,15 @@ def main():
     img = subparsers.add_parser("image", help="文生图")
     img.add_argument("prompt", help="图像描述")
     img.add_argument("--ratio", default="1:1", help="宽高比")
+    img.add_argument("--output", "-o", help="保存图片路径")
+    img.add_argument("--download", action="store_true", help="下载图片到本地")
 
     i2i = subparsers.add_parser("i2i", help="图生图")
     i2i.add_argument("image", help="参考图像路径")
     i2i.add_argument("prompt", help="图像描述/修改指令")
     i2i.add_argument("--ratio", default="1:1", help="宽高比")
+    i2i.add_argument("--output", "-o", help="保存图片路径")
+    i2i.add_argument("--download", action="store_true", help="下载图片到本地")
 
     video = subparsers.add_parser("video", help="视频生成")
     video.add_argument("prompt", help="视频描述")
@@ -156,7 +187,6 @@ def main():
     video_query.add_argument("task_id", help="任务 ID")
 
     args = parser.parse_args()
-
     client = MiniMaxAPI()
 
     try:
@@ -177,11 +207,17 @@ def main():
 
         elif args.command == "image":
             result = client.image_generate(args.prompt, aspect_ratio=args.ratio)
-            print(json.dumps(result, indent=2, ensure_ascii=False))
+            if args.download or args.output:
+                _download_image(result, args.output)
+            else:
+                print(json.dumps(result, indent=2, ensure_ascii=False))
 
         elif args.command == "i2i":
             result = client.image_i2i(args.image, args.prompt, aspect_ratio=args.ratio)
-            print(json.dumps(result, indent=2, ensure_ascii=False))
+            if args.download or args.output:
+                _download_image(result, args.output)
+            else:
+                print(json.dumps(result, indent=2, ensure_ascii=False))
 
         elif args.command == "video":
             result = client.video_generate(args.prompt)
