@@ -69,7 +69,7 @@ class MiniMaxAPI:
     def image_generate(self, prompt, model="image-01", aspect_ratio="1:1"):
         """文生图 (Text-to-Image)"""
         response = requests.post(
-            f"{self.host}/v1/image_v2",
+            f"{self.host}/v1/image_generation",
             headers=self._headers(),
             json={"model": model, "prompt": prompt, "aspect_ratio": aspect_ratio},
             timeout=60,
@@ -84,13 +84,18 @@ class MiniMaxAPI:
         with open(image_path, "rb") as f:
             image_base64 = base64.b64encode(f.read()).decode()
         response = requests.post(
-            f"{self.host}/v1/image_i2i",
+            f"{self.host}/v1/image_generation",
             headers=self._headers(),
             json={
                 "model": model,
-                "image_parts": [{"type": "base64", "data": image_base64}],
                 "prompt": prompt,
                 "aspect_ratio": aspect_ratio,
+                "subject_reference": [
+                    {
+                        "type": "character",
+                        "image_file": f"data:image/jpeg;base64,{image_base64}",
+                    }
+                ],
             },
             timeout=60,
         )

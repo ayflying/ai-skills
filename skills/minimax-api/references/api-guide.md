@@ -108,14 +108,17 @@ import base64
 with open("input.jpg", "rb") as f:
     image_base64 = base64.b64encode(f.read()).decode()
 
+# 使用 subject_reference 指定参考图
 response = requests.post(
-    f"{MINIMAX_API_HOST}/v1/image_i2i",
+    f"{MINIMAX_API_HOST}/v1/image_generation",
     headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"},
     json={
         "model": "image-01",
-        "image_parts": [{"type": "base64", "data": image_base64}],
         "prompt": "将这只猫变成卡通风格",
-        "aspect_ratio": "1:1"
+        "aspect_ratio": "1:1",
+        "subject_reference": [
+            {"type": "character", "image_file": f"data:image/jpeg;base64,{image_base64}"}
+        ]
     }
 )
 ```

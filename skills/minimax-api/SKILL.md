@@ -17,8 +17,8 @@ npx skills add ayflying/ai-skills --skill minimax-api
 
 ## 前提条件
 
-1. 注册 MiniMax API 平台：https://platform.minimax.io
-2. 创建 API Key：https://platform.minimax.io/user-center/basic-information/interface-key
+1. 注册 MiniMax API 平台：https://platform.minimaxi.com
+2. 创建 API Key：https://platform.minimaxi.com/user-center/basic-information/interface-key
 3. 配置环境变量（参考 `.env.example`）
 
 ## 环境变量
@@ -58,8 +58,7 @@ python scripts/minimax.py video "日出时分，海浪拍打沙滩"
 | 文本生成 | `POST /anthropic/v1/messages` |
 | 语音合成 | `POST /v1/t2a_v2` |
 | 语音克隆 | `POST /v1/voice_cloning/upload` |
-| 文生图 | `POST /v1/image_v2` |
-| 图生图 | `POST /v1/image_i2i` |
+| 文生图/图生图 | `POST /v1/image_generation` |
 | 视频生成 | `POST /v1/video_generation` |
 | 音乐生成 | `POST /v1/music_generation` |
 
