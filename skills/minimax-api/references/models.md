@@ -2,8 +2,8 @@
 
 ## 文本模型
 
-| 模型 | 说明 |上下文|特性|
-|------|------|------|-----|
+| 模型 | 说明 | 上下文 | 特性 |
+|------|------|--------|------|
 | MiniMax-M2.7-200k | 最新旗舰模型 | 200k tokens | 强推理、代码、多模态 |
 | MiniMax-M2.1-200k | 高性价比 | 200k tokens | 快速响应 |
 | MiniMax-M2 | 平衡型 | 100k tokens | 通用场景 |
@@ -39,11 +39,13 @@
 
 ## API 端点
 
-```
-文本:  POST {host}/anthropic/v1/messages
-语音:  POST {host}/v1/t2a_v2
-图像:  POST {host}/v1/image_v2
-视频:  POST {host}/v1/video_generation
-       GET  {host}/v1/video_generation/{task_id}
-音乐:  POST {host}/v1/music_generation
-```
+| 功能 | 端点 |
+|------|------|
+| 文本生成 | `POST {host}/anthropic/v1/messages` |
+| 语音合成 | `POST {host}/v1/t2a_v2` |
+| 语音克隆上传 | `POST {host}/v1/voice_cloning/upload` |
+| 文生图 | `POST {host}/v1/image_v2` |
+| 图生图 | `POST {host}/v1/image_i2i` |
+| 视频生成 | `POST {host}/v1/video_generation` |
+| 视频查询 | `GET {host}/v1/video_generation/{task_id}` |
+| 音乐生成 | `POST {host}/v1/music_generation` |

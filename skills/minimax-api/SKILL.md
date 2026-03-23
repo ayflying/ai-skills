@@ -7,7 +7,7 @@ description: |
 
 # minimax-api
 
-MiniMax 多模态 AI API 集成，通过 HTTP 调用MiniMax平台能力。
+MiniMax 多模态 AI API 集成，通过 HTTP 调用 MiniMax 平台能力。
 
 ## 安装命令
 
@@ -21,149 +21,52 @@ npx skills add ayflying/ai-skills --skill minimax-api
 2. 创建 API Key：https://platform.minimax.io/user-center/basic-information/interface-key
 3. 配置环境变量（参考 `.env.example`）
 
-## API 端点
-
-| 地区 | Base URL | API Key 获取 |
-|------|----------|-------------|
-| 国际 | `https://api.minimax.io` | platform.minimax.io |
-| 国内 | `https://api.minimaxi.com` | platform.minimaxi.com |
-
 ## 环境变量
 
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `MINIMAX_API_KEY` | API Key | - |
+| `MINIMAX_API_HOST` | API 地址 | `https://api.minimax.io` (国际) |
+
+地区对应：
+- 国际: `https://api.minimax.io`
+- 国内: `https://api.minimaxi.com`
+
+## 快速使用
+
 ```bash
-MINIMAX_API_KEY=your-api-key
-MINIMAX_API_HOST=https://api.minimax.io  # 国际
-# 或
-MINIMAX_API_HOST=https://api.minimaxi.com  # 国内
+# 文本对话
+python scripts/minimax.py chat "你好"
+
+# 文生图
+python scripts/minimax.py image "一只可爱的猫咪"
+
+# 图生图
+python scripts/minimax.py i2i input.jpg "变成卡通风格"
+
+# 语音合成
+python scripts/minimax.py tts "你好，世界"
+
+# 视频生成
+python scripts/minimax.py video "日出时分，海浪拍打沙滩"
 ```
 
-## 核心功能
+## API 端点速查
 
-### 1. 文本生成 ( Anthropic 兼容)
+| 功能 | 端点 |
+|------|------|
+| 文本生成 | `POST /anthropic/v1/messages` |
+| 语音合成 | `POST /v1/t2a_v2` |
+| 语音克隆 | `POST /v1/voice_cloning/upload` |
+| 文生图 | `POST /v1/image_v2` |
+| 图生图 | `POST /v1/image_i2i` |
+| 视频生成 | `POST /v1/video_generation` |
+| 音乐生成 | `POST /v1/music_generation` |
 
-```python
-import requests
+## 详细文档
 
-response = requests.post(
-    f"{MINIMAX_API_HOST}/anthropic/v1/messages",
-    headers={
-        "Authorization": f"Bearer {MINIMAX_API_KEY}",
-        "Content-Type": "application/json",
-        "anthropic-version": "2023-06-01"
-    },
-    json={
-        "model": "MiniMax-M2.7-200k",
-        "max_tokens": 1024,
-        "messages": [{"role": "user", "content": "Hello"}]
-    }
-)
-```
-
-### 2. 语音合成 (TTS)
-
-```python
-# 同步 TTS (短文本)
-response = requests.post(
-    f"{MINIMAX_API_HOST}/v1/t2a_v2",
-    headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"},
-    json={
-        "model": "speech-02-hd",
-        "text": "你好，世界",
-        "stream": False
-    }
-)
-```
-
-### 3. 语音克隆
-
-```python
-# 1. 上传音频
-with open("audio.wav", "rb") as f:
-    upload_resp = requests.post(
-        f"{MINIMAX_API_HOST}/v1/voice_cloning/upload",
-        headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"},
-        files={"file": f}
-    )
-voice_id = upload_resp.json()["data"]["voice_id"]
-
-# 2. 使用克隆声音合成
-response = requests.post(
-    f"{MINIMAX_API_HOST}/v1/t2a_v2",
-    headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"},
-    json={"model": "speech-02-hd", "text": "使用克隆声音", "voice_setting": {"voice_id": voice_id}}
-)
-```
-
-### 4. 图像生成
-
-#### 文生图 (Text-to-Image)
-
-```python
-response = requests.post(
-    f"{MINIMAX_API_HOST}/v1/image_v2",
-    headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"},
-    json={
-        "model": "image-01",
-        "prompt": "一只可爱的猫咪",
-        "aspect_ratio": "1:1"
-    }
-)
-```
-
-#### 图生图 (Image-to-Image)
-
-```python
-# 读取参考图像并转为 base64
-import base64
-with open("input.jpg", "rb") as f:
-    image_base64 = base64.b64encode(f.read()).decode()
-
-response = requests.post(
-    f"{MINIMAX_API_HOST}/v1/image_i2i",
-    headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"},
-    json={
-        "model": "image-01",
-        "image_parts": [{"type": "base64", "data": image_base64}],
-        "prompt": "将这只猫变成卡通风格",
-        "aspect_ratio": "1:1"
-    }
-)
-```
-
-### 5. 视频生成 (T2V)
-
-```python
-# 创建任务
-response = requests.post(
-    f"{MINIMAX_API_HOST}/v1/video_generation",
-    headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"},
-    json={
-        "model": "video-01",
-        "prompt": "日出时分，海浪拍打沙滩"
-    }
-)
-task_id = response.json()["data"]["task_id"]
-
-# 查询状态
-status_resp = requests.get(
-    f"{MINIMAX_API_HOST}/v1/video_generation/{task_id}",
-    headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"}
-)
-```
-
-### 6. 音乐生成
-
-```python
-response = requests.post(
-    f"{MINIMAX_API_HOST}/v1/music_generation",
-    headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"},
-    json={
-        "model": "music-01",
-        "prompt": "欢快的流行音乐，适合派对",
-        "lyrics": "[verse]\n这是一段歌词\n[chorus]\n副歌部分"
-    }
-)
-```
+- API 详细调用示例：参见 [references/api-guide.md](references/api-guide.md)
+- 模型列表：参见 [references/models.md](references/models.md)
 
 ## 错误处理
 
@@ -178,5 +81,4 @@ response = requests.post(
 ## 更多信息
 
 - API 文档：https://platform.minimax.io/docs
-- 模型列表：参见 [references/models.md](references/models.md)
 - MCP 集成：https://platform.minimax.io/docs/guides/mcp-guide.md
