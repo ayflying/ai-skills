@@ -1,0 +1,23 @@
+{
+  "skill_name": "minimax-api",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "使用 minimax-api 生成一张猫咪图片",
+      "expected_output": "返回图像生成结果或 URL",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "使用 minimax-api 进行文本对话",
+      "expected_output": "返回对话响应",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "使用 minimax-api 合成语音",
+      "expected_output": "返回语音数据或任务 ID",
+      "files": []
+    }
+  ]
+}
