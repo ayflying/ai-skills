@@ -130,6 +130,46 @@ class MiniMaxAPI:
         response.raise_for_status()
         return response.json()
 
+    def music_generate(
+        self,
+        prompt,
+        model="music-2.5+",
+        lyrics=None,
+        is_instrumental=False,
+        lyrics_optimizer=False,
+        output_format="url",
+        stream=False,
+        sample_rate=44100,
+        bitrate=256000,
+        audio_format="mp3",
+        aigc_watermark=False,
+    ):
+        """音乐生成"""
+        data = {
+            "model": model,
+            "prompt": prompt,
+            "is_instrumental": is_instrumental,
+            "lyrics_optimizer": lyrics_optimizer,
+            "output_format": output_format,
+            "stream": stream,
+            "audio_setting": {
+                "sample_rate": sample_rate,
+                "bitrate": bitrate,
+                "format": audio_format,
+            },
+            "aigc_watermark": aigc_watermark,
+        }
+        if lyrics:
+            data["lyrics"] = lyrics
+        response = requests.post(
+            f"{self.host}/v1/music_generation",
+            headers=self._headers(),
+            json=data,
+            timeout=60,
+        )
+        response.raise_for_status()
+        return response.json()
+
 
 def _download_image(result, output_path=None):
     """下载图片到本地"""
@@ -149,6 +189,28 @@ def _download_image(result, output_path=None):
         with open(path, "wb") as f:
             f.write(resp.content)
         print(f"Saved to {path}")
+
+
+def _download_music(result, output_path=None, audio_format="mp3"):
+    """下载音乐到本地"""
+    data = result.get("data", {})
+    audio_url = data.get("audio_url") or data.get("audio")
+    if not audio_url:
+        print("No audio URL in response", file=sys.stderr)
+        return
+    if not audio_url.startswith("http"):
+        print(
+            "Audio is hex-encoded, not a URL. Output format must be url.",
+            file=sys.stderr,
+        )
+        return
+    path = output_path or f"output.{audio_format}"
+    print(f"Downloading to {path}...")
+    resp = requests.get(audio_url)
+    resp.raise_for_status()
+    with open(path, "wb") as f:
+        f.write(resp.content)
+    print(f"Saved to {path}")
 
 
 def main():
@@ -185,6 +247,18 @@ def main():
 
     video_query = subparsers.add_parser("video-query", help="查询视频状态")
     video_query.add_argument("task_id", help="任务 ID")
+
+    music = subparsers.add_parser("music", help="音乐生成")
+    music.add_argument("prompt", help="音乐描述（风格、情绪、场景）")
+    music.add_argument("--lyrics", help="歌词（使用 \\n 分隔行）")
+    music.add_argument("--model", default="music-2.5+", help="模型")
+    music.add_argument("--instrumental", action="store_true", help="生成纯音乐")
+    music.add_argument("--lyrics-optimizer", action="store_true", help="自动生成歌词")
+    music.add_argument("--format", default="mp3", choices=["mp3", "wav", "pcm"])
+    music.add_argument("--bitrate", type=int, default=256000)
+    music.add_argument("--sample-rate", type=int, default=44100)
+    music.add_argument("--output", "-o", help="保存路径")
+    music.add_argument("--download", action="store_true", help="下载到本地")
 
     args = parser.parse_args()
     client = MiniMaxAPI()
@@ -226,6 +300,22 @@ def main():
         elif args.command == "video-query":
             result = client.video_query(args.task_id)
             print(json.dumps(result, indent=2, ensure_ascii=False))
+
+        elif args.command == "music":
+            result = client.music_generate(
+                prompt=args.prompt,
+                model=args.model,
+                lyrics=args.lyrics,
+                is_instrumental=args.instrumental,
+                lyrics_optimizer=args.lyrics_optimizer,
+                audio_format=args.format,
+                bitrate=args.bitrate,
+                sample_rate=args.sample_rate,
+            )
+            if args.download or args.output:
+                _download_music(result, args.output, args.format)
+            else:
+                print(json.dumps(result, indent=2, ensure_ascii=False))
 
         else:
             parser.print_help()

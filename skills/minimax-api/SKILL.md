@@ -108,6 +108,33 @@ python scripts/minimax.py video "日出时分，海浪拍打沙滩"
 python scripts/minimax.py video-query <task_id>
 ```
 
+### 音乐生成
+
+支持带歌词的歌曲和纯音乐生成。
+
+```bash
+# 生成有歌词的歌曲
+python scripts/minimax.py music "流行音乐,欢快,阳光" --lyrics "[Verse]\n歌词第一行\n歌词第二行"
+
+# 生成纯音乐
+python scripts/minimax.py music "爵士乐,放松,咖啡馆" --instrumental
+
+# 自动生成歌词（根据 prompt）
+python scripts/minimax.py music "独立民谣,忧郁,内省" --lyrics-optimizer
+
+# 下载到本地
+python scripts/minimax.py music "流行音乐" --download -o song.mp3
+```
+
+**参数说明**：
+- `prompt` - 音乐描述（风格、情绪、场景），必填
+- `--lyrics` - 歌词，使用 `\n` 分隔行，支持结构标签如 `[Verse]`, `[Chorus]` 等
+- `--instrumental` - 生成纯音乐（无人声）
+- `--lyrics-optimizer` - 根据 prompt 自动生成歌词
+- `--format` - 音频格式 (mp3/wav/pcm，默认 mp3)
+- `--bitrate` - 比特率 (默认 256000)
+- `--sample-rate` - 采样率 (默认 44100)
+
 ## AI 使用本技能的指南
 
 当用户请求生成图片、语音、视频或音乐时，AI 应该：
