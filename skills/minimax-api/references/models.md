@@ -13,6 +13,10 @@
 
 | 模型 | 说明 | 特性 |
 |------|------|------|
+| speech-2.8-hd | 精准还原真实语气细节 | 全面提升音色相似度 |
+| speech-2.6-hd | 超低延时 | 归一化升级，更高自然度 |
+| speech-2.8-turbo | 精准还原真实语气细节 | 更快更优惠 |
+| speech-2.6-turbo | 极速版 | 适用于语音聊天和数字人场景 |
 | speech-02-hd | 高清语音合成 | 多语言、情感控制 |
 | speech-02 | 标准语音合成 | 低延迟 |
 | speech-01 | 基础语音 | 简单场景 |
@@ -45,7 +49,10 @@
 |------|------|
 | 文本生成 | `POST {host}/anthropic/v1/messages` |
 | 语音合成 | `POST {host}/v1/t2a_v2` |
-| 语音克隆上传 | `POST {host}/v1/voice_cloning/upload` |
+| WebSocket 语音合成 | `WSS {host}/ws/v1/t2a_v2` |
+| 克隆音频上传 | `POST {host}/v1/files/upload` |
+| 示例音频上传 | `POST {host}/v1/files/upload` |
+| 音色克隆 | `POST {host}/v1/voice_clone` |
 | 文生图/图生图 | `POST {host}/v1/image_generation` |
 | 视频生成 | `POST {host}/v1/video_generation` |
 | 视频查询 | `GET {host}/v1/video_generation/{task_id}` |

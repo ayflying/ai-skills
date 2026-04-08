@@ -87,13 +87,48 @@ python scripts/minimax.py tts "你好，世界" --voice-id your_voice_id
 
 ### 语音克隆
 
-```bash
-# 1. 上传音频获取 voice_id
-python scripts/minimax.py clone-upload audio.wav
+音色克隆完整流程：
 
-# 2. 使用返回的 voice_id 进行语音合成
-python scripts/minimax.py tts "使用克隆的声音" --voice-id returned_voice_id
+```bash
+# 1. 上传待克隆音频 (10秒-5分钟)
+python scripts/minimax.py clone-upload audio.wav
+# 返回 {"file": {"file_id": "xxx"}, ...}
+
+# 2. (可选) 上传示例音频增强效果 (<8秒)
+python scripts/minimax.py clone-upload-prompt prompt.wav
+# 返回 {"file": {"file_id": "yyy"}, ...}
+
+# 3. 执行音色克隆
+python scripts/minimax.py voice-clone <file_id> <自定义voice_id> "克隆用的文本"
+# 可选: --prompt-file-id <prompt_file_id> --prompt-text "示例文本"
+
+# 4. 使用克隆的 voice_id 进行语音合成
+python scripts/minimax.py tts "使用克隆的声音" --voice-id 你的voice_id
 ```
+
+### WebSocket 语音合成
+
+流式语音合成，支持更长文本 (最长 10,000 字符)：
+
+```bash
+# 基本用法
+python scripts/minimax.py tts-ws "要转换的文本" -o output.mp3
+
+# 使用克隆的声音
+python scripts/minimax.py tts-ws "要转换的文本" --voice-id 你的voice_id -o output.mp3
+
+# 调整语速和音调
+python scripts/minimax.py tts-ws "要转换的文本" --speed 1.2 --pitch 0 -o output.mp3
+```
+
+**参数说明**：
+- `--voice-id` - 语音 ID (可用克隆的自定义 ID 或预设 ID)
+- `--model` - TTS 模型 (speech-2.8-hd/speech-2.6-hd/speech-02-hd 等)
+- `--speed` - 语速 (默认 1.0)
+- `--pitch` - 音调 (默认 0)
+- `--format` - 音频格式 (mp3/wav/pcm)
+- `--bitrate` - 比特率 (默认 128000)
+- `--sample-rate` - 采样率 (默认 32000)
 
 ### 视频生成
 
@@ -179,7 +214,10 @@ A: 检查错误码：1003=无效Key，1004=余额不足，1005=限流，3001=内
 |------|------|
 | 文本生成 | `POST /anthropic/v1/messages` |
 | 语音合成 | `POST /v1/t2a_v2` |
-| 语音克隆上传 | `POST /v1/voice_cloning/upload` |
+| WebSocket 语音合成 | `WSS /ws/v1/t2a_v2` |
+| 克隆音频上传 | `POST /v1/files/upload` |
+| 示例音频上传 | `POST /v1/files/upload` |
+| 音色克隆 | `POST /v1/voice_clone` |
 | 文生图/图生图 | `POST /v1/image_generation` |
 | 视频生成 | `POST /v1/video_generation` |
 | 视频查询 | `GET /v1/video_generation/{task_id}` |

@@ -61,17 +61,137 @@ class MiniMaxAPI:
         response.raise_for_status()
         return response.json()
 
-    def voice_clone_upload(self, file_path):
-        """上传音频用于语音克隆"""
+    def voice_clone_upload_file(self, file_path):
+        """上传克隆音频文件 (获取 file_id)"""
         with open(file_path, "rb") as f:
             response = requests.post(
-                f"{self.host}/v1/voice_cloning/upload",
+                f"{self.host}/v1/files/upload",
                 headers=self._headers(),
+                data={"purpose": "voice_clone"},
                 files={"file": f},
                 timeout=30,
             )
         response.raise_for_status()
         return response.json()
+
+    def voice_clone_upload_prompt(self, file_path):
+        """上传示例音频文件 (增强克隆效果)"""
+        with open(file_path, "rb") as f:
+            response = requests.post(
+                f"{self.host}/v1/files/upload",
+                headers=self._headers(),
+                data={"purpose": "prompt_audio"},
+                files={"file": f},
+                timeout=30,
+            )
+        response.raise_for_status()
+        return response.json()
+
+    def voice_clone(
+        self,
+        file_id,
+        voice_id,
+        text,
+        model="speech-2.8-hd",
+        prompt_file_id=None,
+        prompt_text=None,
+    ):
+        """音色克隆"""
+        payload = {
+            "file_id": file_id,
+            "voice_id": voice_id,
+            "text": text,
+            "model": model,
+        }
+        if prompt_file_id and prompt_text:
+            payload["clone_prompt"] = {
+                "prompt_audio": prompt_file_id,
+                "prompt_text": prompt_text,
+            }
+        response = requests.post(
+            f"{self.host}/v1/voice_clone",
+            headers=self._headers({"Content-Type": "application/json"}),
+            json=payload,
+            timeout=60,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def tts_websocket(
+        self,
+        text,
+        model="speech-2.8-hd",
+        voice_id="male-qn-qingse",
+        speed=1,
+        vol=1,
+        pitch=0,
+        sample_rate=32000,
+        bitrate=128000,
+        audio_format="mp3",
+        output_path=None,
+    ):
+        """WebSocket 语音合成 (流式)"""
+        import websockets
+        import ssl
+
+        url = "wss://api.minimaxi.com/ws/v1/t2a_v2"
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+
+        async with websockets.connect(
+            url, additional_headers=self._headers(), ssl=ssl_context
+        ) as ws:
+            connected = json.loads(await ws.recv())
+            if connected.get("event") != "connected_success":
+                raise Exception("WebSocket 连接失败")
+
+            await ws.send(
+                json.dumps(
+                    {
+                        "event": "task_start",
+                        "model": model,
+                        "voice_setting": {
+                            "voice_id": voice_id,
+                            "speed": speed,
+                            "vol": vol,
+                            "pitch": pitch,
+                            "english_normalization": False,
+                        },
+                        "audio_setting": {
+                            "sample_rate": sample_rate,
+                            "bitrate": bitrate,
+                            "format": audio_format,
+                            "channel": 1,
+                        },
+                    }
+                )
+            )
+
+            start_resp = json.loads(await ws.recv())
+            if start_resp.get("event") != "task_started":
+                raise Exception(f"任务启动失败: {start_resp}")
+
+            audio_data = b""
+            await ws.send(json.dumps({"event": "task_continue", "text": text}))
+
+            while True:
+                response = json.loads(await ws.recv())
+                if "data" in response and "audio" in response["data"]:
+                    audio_hex = response["data"]["audio"]
+                    if audio_hex:
+                        audio_data += bytes.fromhex(audio_hex)
+                if response.get("is_final"):
+                    break
+
+            await ws.send(json.dumps({"event": "task_finish"}))
+
+            if output_path:
+                with open(output_path, "wb") as f:
+                    f.write(audio_data)
+                print(f"Audio saved to {output_path}")
+
+            return audio_data
 
     def image_generate(self, prompt, model="image-01", aspect_ratio="1:1"):
         """文生图 (Text-to-Image)"""
@@ -260,6 +380,33 @@ def main():
     music.add_argument("--output", "-o", help="保存路径")
     music.add_argument("--download", action="store_true", help="下载到本地")
 
+    clone_upload = subparsers.add_parser("clone-upload", help="上传克隆音频")
+    clone_upload.add_argument("file", help="音频文件路径 (mp3/m4a/wav)")
+
+    clone_upload_prompt = subparsers.add_parser(
+        "clone-upload-prompt", help="上传示例音频"
+    )
+    clone_upload_prompt.add_argument("file", help="示例音频文件路径 (<8s)")
+
+    voice_clone = subparsers.add_parser("voice-clone", help="音色克隆")
+    voice_clone.add_argument("file_id", help="克隆音频的 file_id")
+    voice_clone.add_argument("voice_id", help="自定义音色 ID")
+    voice_clone.add_argument("text", help="克隆文本")
+    voice_clone.add_argument("--model", default="speech-2.8-hd", help="克隆模型")
+    voice_clone.add_argument("--prompt-file-id", help="示例音频 file_id")
+    voice_clone.add_argument("--prompt-text", help="示例音频对应的文本")
+
+    tts_ws = subparsers.add_parser("tts-ws", help="WebSocket 语音合成")
+    tts_ws.add_argument("text", help="要转换的文本")
+    tts_ws.add_argument("--voice-id", default="male-qn-qingse", help="语音 ID")
+    tts_ws.add_argument("--model", default="speech-2.8-hd", help="TTS 模型")
+    tts_ws.add_argument("--speed", type=float, default=1.0, help="语速")
+    tts_ws.add_argument("--pitch", type=float, default=0, help="音调")
+    tts_ws.add_argument("--format", default="mp3", choices=["mp3", "wav", "pcm"])
+    tts_ws.add_argument("--bitrate", type=int, default=128000, help="比特率")
+    tts_ws.add_argument("--sample-rate", type=int, default=32000, help="采样率")
+    tts_ws.add_argument("--output", "-o", help="保存路径")
+
     args = parser.parse_args()
     client = MiniMaxAPI()
 
@@ -276,8 +423,40 @@ def main():
             print(json.dumps(result, indent=2, ensure_ascii=False))
 
         elif args.command == "clone-upload":
-            result = client.voice_clone_upload(args.file)
+            result = client.voice_clone_upload_file(args.file)
             print(json.dumps(result, indent=2, ensure_ascii=False))
+
+        elif args.command == "clone-upload-prompt":
+            result = client.voice_clone_upload_prompt(args.file)
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+
+        elif args.command == "voice-clone":
+            result = client.voice_clone(
+                file_id=args.file_id,
+                voice_id=args.voice_id,
+                text=args.text,
+                model=args.model,
+                prompt_file_id=args.prompt_file_id,
+                prompt_text=args.prompt_text,
+            )
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+
+        elif args.command == "tts-ws":
+            import asyncio
+
+            asyncio.run(
+                client.tts_websocket(
+                    text=args.text,
+                    model=args.model,
+                    voice_id=args.voice_id,
+                    speed=args.speed,
+                    pitch=args.pitch,
+                    audio_format=args.format,
+                    bitrate=args.bitrate,
+                    sample_rate=args.sample_rate,
+                    output_path=args.output,
+                )
+            )
 
         elif args.command == "image":
             result = client.image_generate(args.prompt, aspect_ratio=args.ratio)
