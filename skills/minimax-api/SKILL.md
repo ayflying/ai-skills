@@ -132,16 +132,48 @@ python scripts/minimax.py tts-ws "要转换的文本" --speed 1.2 --pitch 0 -o o
 
 ### 视频生成
 
-视频生成是**异步**的，需要先创建任务，再查询状态。
+视频生成是**异步**的，需要先创建任务，再查询状态。支持三种模式：
+
+#### 文生视频 (T2V)
 
 ```bash
-# 1. 创建视频生成任务
-python scripts/minimax.py video "日出时分，海浪拍打沙滩"
-# 返回 {"id": "task_id", ...}
+python scripts/minimax.py video "日出时分，海浪拍打沙滩，远处海鸥飞过[推进]"
+# 返回 {"task_id": "xxx", ...}
 
-# 2. 使用返回的 task_id 查询状态
+# 指定时长和分辨率
+python scripts/minimax.py video "海边日落" --duration 10 --resolution 1080P
+```
+
+#### 图生视频 (I2V)
+
+```bash
+python scripts/minimax.py i2v "猫咪转身看向镜头[左摇]" image.jpg
+
+# 使用 URL
+python scripts/minimax.py i2v "人物走向镜头" https://example.com/image.jpg
+```
+
+#### 首尾帧视频 (FL2V)
+
+```bash
+python scripts/minimax.py fl2v "小女孩成长为女人" start.jpg end.jpg
+```
+
+#### 查询视频状态
+
+```bash
 python scripts/minimax.py video-query <task_id>
 ```
+
+**运镜指令**：在 prompt 中使用 `[指令]` 可控制镜头移动：
+- `[左移]` `[右移]` `[左摇]` `[右摇]` `[推进]` `[拉远]`
+- `[上升]` `[下降]` `[上摇]` `[下摇]`
+- `[变焦推近]` `[变焦拉远]` `[晃动]` `[跟随]` `[固定]`
+
+**参数说明**：
+- `--model` - 模型 (T2V: MiniMax-Hailuo-2.3/MiniMax-Hailuo-02/T2V-01; I2V: MiniMax-Hailuo-2.3/MiniMax-Hailuo-02/I2V-01; FL2V: MiniMax-Hailuo-02)
+- `--duration` - 时长 (6或10秒)
+- `--resolution` - 分辨率 (512P/720P/768P/1080P)
 
 ### 音乐生成
 

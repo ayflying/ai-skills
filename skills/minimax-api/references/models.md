@@ -30,10 +30,16 @@
 
 ## 视频模型
 
-| 模型 | 说明 |
-|------|------|
-| video-01 | 文本/图像生成视频 |
-| video-01-mini | 快速版本 |
+| 模型 | 说明 | 支持模式 |
+|------|------|----------|
+| MiniMax-Hailuo-2.3 | 旗舰视频模型 | T2V / I2V |
+| MiniMax-Hailuo-2.3-Fast | 快速版本 | I2V |
+| MiniMax-Hailuo-02 | 最新模型 | T2V / I2V / FL2V |
+| T2V-01-Director |导演模型 | T2V |
+| T2V-01 | 标准模型 | T2V |
+| I2V-01-Director | 导演模型 | I2V |
+| I2V-01-live | 真人模型 | I2V |
+| I2V-01 | 标准模型 | I2V |
 
 ## 音乐模型
 

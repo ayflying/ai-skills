@@ -229,12 +229,47 @@ class MiniMaxAPI:
         response.raise_for_status()
         return response.json()
 
-    def video_generate(self, prompt, model="video-01"):
-        """视频生成 (异步)"""
+    def video_generate(
+        self,
+        prompt=None,
+        model="MiniMax-Hailuo-2.3",
+        first_frame_image=None,
+        last_frame_image=None,
+        duration=6,
+        resolution="768P",
+        prompt_optimizer=True,
+        fast_pretreatment=False,
+        aigc_watermark=False,
+    ):
+        """视频生成 (异步)
+
+        支持三种模式:
+        - T2V (文生视频): 只传 prompt
+        - I2V (图生视频): 传 prompt + first_frame_image
+        - FL2V (首尾帧视频): 传 prompt + first_frame_image + last_frame_image
+        """
+        data = {
+            "model": model,
+            "duration": duration,
+            "resolution": resolution,
+            "prompt_optimizer": prompt_optimizer,
+            "aigc_watermark": aigc_watermark,
+        }
+        if prompt:
+            data["prompt"] = prompt
+        if first_frame_image:
+            data["first_frame_image"] = first_frame_image
+        if last_frame_image:
+            data["last_frame_image"] = last_frame_image
+        if model.startswith("MiniMax-Hailuo-2.3") or model.startswith(
+            "MiniMax-Hailuo-02"
+        ):
+            data["fast_pretreatment"] = fast_pretreatment
+
         response = requests.post(
             f"{self.host}/v1/video_generation",
             headers=self._headers(),
-            json={"model": model, "prompt": prompt},
+            json=data,
             timeout=30,
         )
         response.raise_for_status()
@@ -362,11 +397,37 @@ def main():
     i2i.add_argument("--output", "-o", help="保存图片路径")
     i2i.add_argument("--download", action="store_true", help="下载图片到本地")
 
-    video = subparsers.add_parser("video", help="视频生成")
+    video = subparsers.add_parser("video", help="文生视频 (T2V)")
     video.add_argument("prompt", help="视频描述")
+    video.add_argument("--model", default="MiniMax-Hailuo-2.3", help="模型")
+    video.add_argument("--duration", type=int, default=6, help="时长 (6/10秒)")
+    video.add_argument(
+        "--resolution", default="768P", help="分辨率 (512P/720P/768P/1080P)"
+    )
+    video.add_argument(
+        "--no-prompt-optimizer", action="store_true", help="禁用 prompt 优化"
+    )
 
     video_query = subparsers.add_parser("video-query", help="查询视频状态")
     video_query.add_argument("task_id", help="任务 ID")
+
+    i2v = subparsers.add_parser("i2v", help="图生视频 (I2V)")
+    i2v.add_argument("prompt", help="视频描述")
+    i2v.add_argument("image", help="起始帧图片路径或URL")
+    i2v.add_argument("--model", default="MiniMax-Hailuo-2.3", help="模型")
+    i2v.add_argument("--duration", type=int, default=6, help="时长 (6/10秒)")
+    i2v.add_argument("--resolution", default="768P", help="分辨率")
+    i2v.add_argument(
+        "--no-prompt-optimizer", action="store_true", help="禁用 prompt 优化"
+    )
+
+    fl2v = subparsers.add_parser("fl2v", help="首尾帧视频 (FL2V)")
+    fl2v.add_argument("prompt", help="视频描述")
+    fl2v.add_argument("first_image", help="起始帧图片路径或URL")
+    fl2v.add_argument("last_image", help="结束帧图片路径或URL")
+    fl2v.add_argument("--model", default="MiniMax-Hailuo-02", help="模型")
+    fl2v.add_argument("--duration", type=int, default=6, help="时长 (6/10秒)")
+    fl2v.add_argument("--resolution", default="768P", help="分辨率")
 
     music = subparsers.add_parser("music", help="音乐生成")
     music.add_argument("prompt", help="音乐描述（风格、情绪、场景）")
@@ -473,11 +534,39 @@ def main():
                 print(json.dumps(result, indent=2, ensure_ascii=False))
 
         elif args.command == "video":
-            result = client.video_generate(args.prompt)
+            result = client.video_generate(
+                prompt=args.prompt,
+                model=args.model,
+                duration=args.duration,
+                resolution=args.resolution,
+                prompt_optimizer=not args.no_prompt_optimizer,
+            )
             print(json.dumps(result, indent=2, ensure_ascii=False))
 
         elif args.command == "video-query":
             result = client.video_query(args.task_id)
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+
+        elif args.command == "i2v":
+            result = client.video_generate(
+                prompt=args.prompt,
+                model=args.model,
+                first_frame_image=args.image,
+                duration=args.duration,
+                resolution=args.resolution,
+                prompt_optimizer=not args.no_prompt_optimizer,
+            )
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+
+        elif args.command == "fl2v":
+            result = client.video_generate(
+                prompt=args.prompt,
+                model=args.model,
+                first_frame_image=args.first_image,
+                last_frame_image=args.last_image,
+                duration=args.duration,
+                resolution=args.resolution,
+            )
             print(json.dumps(result, indent=2, ensure_ascii=False))
 
         elif args.command == "music":
