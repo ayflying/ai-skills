@@ -34,6 +34,8 @@ ai-skills/
         ├── SKILL.md       # 技能核心文档
         ├── scripts/       # Python 脚本
         └── .env.example   # 配置模板
+    └── gitea-weekly-report/ # Gitea 周报生成技能
+        └── SKILL.md       # 技能核心文档
 ```
 
 ## 技能详情
@@ -131,6 +133,19 @@ ai-skills/
 
 **使用方式**:
 详见 `skills/ollama/SKILL.md`
+
+### gitea-weekly-report
+
+**描述**: 获取 Gitea 组织内项目的工作日志，并自动将技术提交转换为用户能看懂的功能点。
+
+**功能**:
+- 自动查询 Gitea 组织下的所有仓库
+- 根据时间范围（如上周）过滤 commit 记录
+- 将技术描述自动转换为 C端业务功能说明
+- 生成格式化的 Markdown 周报
+
+**使用方式**:
+详见 `skills/gitea-weekly-report/SKILL.md`
 
 ## 如何添加新技能
 

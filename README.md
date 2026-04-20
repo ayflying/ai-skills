@@ -15,6 +15,7 @@
 | [wechat-bot](skills/wechat-bot/SKILL.md) | 微信机器人，基于wxpy实现个人微信自动化 | `skills/wechat-bot/` |
 | [jimeng-ai-generator](skills/jimeng-ai-generator/SKILL.md) | 即梦 AI 批量生成任务自动化 | `skills/jimeng-ai-generator/` |
 | [ollama](skills/ollama/SKILL.md) | 调用 Ollama 本地模型 (qwen3.5:9b) | `skills/ollama/` |
+| [gitea-weekly-report](skills/gitea-weekly-report/SKILL.md) | 生成 Gitea 组织的周报，转换技术提交为业务功能点 | `skills/gitea-weekly-report/` |
 
 ## 使用方式
 

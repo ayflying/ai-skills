@@ -204,26 +204,55 @@ class MiniMaxAPI:
         response.raise_for_status()
         return response.json()
 
-    def image_i2i(self, image_path, prompt, model="image-01", aspect_ratio="1:1"):
-        """图生图 (Image-to-Image)"""
+    def image_i2i(
+        self,
+        image_path,
+        prompt,
+        model="image-01-live",
+        aspect_ratio="1:1",
+        style_type=None,
+        style_weight=0.8,
+        prompt_optimizer=False,
+    ):
+        """图生图 (Image-to-Image)
+
+        Args:
+            image_path: 参考图片路径
+            prompt: 图像描述
+            model: 模型 (image-01 或 image-01-live)
+            aspect_ratio: 宽高比
+            style_type: 画风类型 (漫画/元气/中世纪/水彩)，仅 image-01-live 支持
+            style_weight: 画风权重 (0, 1]
+            prompt_optimizer: 是否优化 prompt
+        """
         import base64
 
         with open(image_path, "rb") as f:
             image_base64 = base64.b64encode(f.read()).decode()
+
+        data = {
+            "model": model,
+            "prompt": prompt,
+            "aspect_ratio": aspect_ratio,
+            "prompt_optimizer": prompt_optimizer,
+            "subject_reference": [
+                {
+                    "type": "character",
+                    "image_file": f"data:image/jpeg;base64,{image_base64}",
+                }
+            ],
+        }
+
+        if style_type and model == "image-01-live":
+            data["style"] = {
+                "style_type": style_type,
+                "style_weight": style_weight,
+            }
+
         response = requests.post(
             f"{self.host}/v1/image_generation",
             headers=self._headers(),
-            json={
-                "model": model,
-                "prompt": prompt,
-                "aspect_ratio": aspect_ratio,
-                "subject_reference": [
-                    {
-                        "type": "character",
-                        "image_file": f"data:image/jpeg;base64,{image_base64}",
-                    }
-                ],
-            },
+            json=data,
             timeout=60,
         )
         response.raise_for_status()
@@ -381,9 +410,6 @@ def main():
     tts.add_argument("--voice-id", help="语音 ID")
     tts.add_argument("--model", default="speech-02-hd", help="TTS 模型")
 
-    clone = subparsers.add_parser("clone-upload", help="上传音频用于克隆")
-    clone.add_argument("file", help="音频文件路径")
-
     img = subparsers.add_parser("image", help="文生图")
     img.add_argument("prompt", help="图像描述")
     img.add_argument("--ratio", default="1:1", help="宽高比")
@@ -394,6 +420,15 @@ def main():
     i2i.add_argument("image", help="参考图像路径")
     i2i.add_argument("prompt", help="图像描述/修改指令")
     i2i.add_argument("--ratio", default="1:1", help="宽高比")
+    i2i.add_argument(
+        "--model", default="image-01-live", help="模型 (image-01/image-01-live)"
+    )
+    i2i.add_argument(
+        "--style",
+        choices=["漫画", "元气", "中世纪", "水彩"],
+        help="画风类型 (仅 image-01-live)",
+    )
+    i2i.add_argument("--style-weight", type=float, default=0.8, help="画风权重 (0-1)")
     i2i.add_argument("--output", "-o", help="保存图片路径")
     i2i.add_argument("--download", action="store_true", help="下载图片到本地")
 
@@ -527,7 +562,14 @@ def main():
                 print(json.dumps(result, indent=2, ensure_ascii=False))
 
         elif args.command == "i2i":
-            result = client.image_i2i(args.image, args.prompt, aspect_ratio=args.ratio)
+            result = client.image_i2i(
+                image_path=args.image,
+                prompt=args.prompt,
+                model=args.model,
+                aspect_ratio=args.ratio,
+                style_type=args.style,
+                style_weight=args.style_weight,
+            )
             if args.download or args.output:
                 _download_image(result, args.output)
             else:
