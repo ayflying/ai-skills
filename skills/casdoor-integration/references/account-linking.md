@@ -17,20 +17,24 @@
 
 **重要**: 不再使用邮箱作为用户关联判断依据，邮箱仅用于展示和通知。
 
-## 3. 无邮箱用户的兜底处理
+## 3. 无邮箱用户处理与可选同步 (重要)
 
-某些 Casdoor 认证源（如企业微信、钉钉等）可能不提供邮箱字段。若直接创建无邮箱用户，可能导致下游系统（如邮件服务、通知系统）出现 NPE 或逻辑异常。
+由于 Casdoor 中的用户（尤其是来自微信、钉钉等第三方认证源的用户）**可能没有填写邮箱**，集成 Casdoor 时必须遵守以下原则，绝不能因为邮箱为空导致登录或同步失败。
 
-**解决方案**: 首次注册时自动生成唯一占位邮箱（但不作为用户标识）。
+### 3.1 邮箱必须为非必填项
+在系统的用户表（Database Schema）、注册校验逻辑、数据同步逻辑中，`email` 字段**必须允许为空（Nullable）**。切勿在代码中强制校验邮箱格式或要求邮箱必填。
+
+### 3.2 按需同步（推荐）
+如果当前集成项目本身**不需要使用邮箱功能**（例如不需要发邮件通知），在接入和同步用户数据时，**完全不需要同步邮箱字段**。直接在数据映射阶段丢弃 Casdoor 返回的 email 字段即可，保持本地系统简洁。
+
+### 3.3 数据库兜底（仅限遗留系统强制非空限制）
+如果项目底层数据库遗留了强制邮箱非空的限制（如旧版系统的 `NOT NULL` 约束）且短期内难以修改表结构，**仅在此种情况下**，首次注册时才自动生成唯一的占位邮箱进行兜底：
 
 ```python
-import uuid
-
 def generate_fallback_email(user_id: str, provider: str) -> str:
     """
-    为无邮箱用户生成唯一占位邮箱
-    格式: {provider}_{user_id}@{FALLBACK_EMAIL_DOMAIN}
-    注意: 此邮箱仅作为联系方式，不作为用户标识
+    仅用于遗留系统强制要求邮箱非空时的兜底方案
+    格式: {provider}_{user_id}@placeholder.local
     """
     FALLBACK_EMAIL_DOMAIN = "placeholder.local"
     return f"{provider}_{user_id}@{FALLBACK_EMAIL_DOMAIN}"
@@ -38,7 +42,7 @@ def generate_fallback_email(user_id: str, provider: str) -> str:
 def process_casdoor_user(user_info: dict) -> dict:
     """
     处理 Casdoor 用户信息
-    用户编号 (uid) 是唯一标识，邮箱仅作联系用途
+    用户编号 (uid) 是唯一标识，邮箱仅作联系用途（如不需要可直接丢弃）
     """
     uid = user_info.get("uid") or user_info.get("id")
     email = user_info.get("email")
@@ -46,20 +50,12 @@ def process_casdoor_user(user_info: dict) -> dict:
     if not uid:
         raise ValueError("用户编号 (uid) 是必填字段")
 
-    # 邮箱兜底（仅作为联系方式，不影响用户身份）
+    # 如果系统强制要求邮箱，且当前用户无邮箱，则生成兜底邮箱
     if not email or email.strip() == "":
         user_info["email"] = generate_fallback_email(uid, user_info.get("type", "unknown"))
-        user_info["is_fallback_email"] = True  # 标记为自动生成
 
     return user_info
 ```
-
-**生成的邮箱示例**: `wechat_abc123@placeholder.local`
-
-**后续处理建议**:
-- 允许用户在个人中心补充真实邮箱
-- 识别此类邮箱时不发送营销类邮件
-- 管理员可按需清理长期未激活的占位账号
 
 ## 4. 字段映射标准
 
@@ -67,7 +63,7 @@ def process_casdoor_user(user_info: dict) -> dict:
 | :--- | :--- | :--- |
 | `uid` | `user_id` | **用户唯一标识**，用于登录判断 |
 | `name` | `username` | 用户名（可变更） |
-| `email` | `email` | 联系方式，不用于身份判断 |
+| `email` | `email` | **非必填**。联系方式，千万不能用于身份判断。如果项目不使用邮箱，直接忽略不进行同步。 |
 | `displayName` | `nickname` | 前端显示的友好名称 |
 | `avatar` | `avatar_url` | 用户的头像链接 |
 
