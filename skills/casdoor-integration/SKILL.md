@@ -47,12 +47,13 @@ GET <CASDOOR_ENDPOINT>/login/oauth/authorize
 }
 ```
 
-### 第三步：解析用户信息
+### 第三步：解析用户信息（重要）
 
-从 Casdoor 响应中提取：
-- `uid` / `id` - 用户唯一标识
+从 Casdoor 响应中提取用户信息时，**必须使用 `uid` 作为登录标识**，**禁止使用 email 作为登录标识**：
+
+- `uid` / `id` - **用户唯一标识，作为登录凭证**
 - `name` - 用户名
-- `email` - 邮箱（可能为空）
+- `email` - 邮箱（可能为空），**禁止用作登录标识**
 - `avatar` - 头像 URL
 - `groups` - 用户组列表
 
