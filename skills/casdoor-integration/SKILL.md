@@ -23,12 +23,29 @@ npx skills add ayflying/ai-skills --skill casdoor-integration
 GET <CASDOOR_ENDPOINT>/login/oauth/authorize
   ?client_id=<ID>
   &response_type=code
-  &redirect_uri=<URL>
+  &redirect_uri=<自动获取的回调地址>
   &scope=read:users+openid+profile+email
   &state=<随机字符串>
 ```
 
 **重要**: 必须传递 `state` 参数防止 CSRF 攻击。
+
+**回调地址自动获取（无需手动配置）**：
+
+`redirect_uri` **不需要在代码中硬编码或单独配置**，而是根据当前请求的访问域名自动生成：
+
+```python
+def get_callback_url(request) -> str:
+    """
+    自动从当前请求的 Host/Referer 中获取回调地址
+    规则：直接使用当前网页的协议+域名+固定路径 /auth/casdoor/callback
+    """
+    scheme = request.headers.get("X-Forwarded-Proto", "https")
+    host = request.headers.get("Host") or request.headers.get("Referer", "").split("://")[1].rstrip("/")
+    return f"{scheme}://{host}/auth/casdoor/callback"
+```
+
+Casdoor 后台只需配置一个通配回调路径（如 `https://*.example.com/auth/casdoor/callback`），或通过泛匹配支持多域名场景。
 
 ### 第二步：回调处理 (Code Exchange)
 
@@ -142,7 +159,7 @@ def save_session(sid, session_data):
 
 ## 5. 回调 401 错误排查清单
 
-1. **Redirect URI 严格匹配**: 代码中的 `callbackURL` 必须与 Casdoor 后台配置的 `Redirect URLs` 字符串完全一致
+1. **回调地址自动获取**: `redirect_uri` 应从当前请求自动派生，确保与实际访问域名一致。Casdoor 后台配置的 `Redirect URLs` 应使用通配符或包含所有可能域名的列表
 2. **容器内网络**: 确保后端容器能访问 Casdoor 服务器
 3. **Secret 转义**: 检查 `clientSecret` 是否包含特殊字符导致转义错误
 4. **协议匹配**: `http` 与 `https` 必须与 Casdoor 后台配置完全匹配
