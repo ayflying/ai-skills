@@ -35,7 +35,8 @@ ai-skills/
         ├── scripts/       # Python 脚本
         └── .env.example   # 配置模板
     └── gitea-weekly-report/ # Gitea 周报生成技能
-        └── SKILL.md       # 技能核心文档
+        ├── SKILL.md       # 技能核心文档
+        └── README.md      # 技能说明
 ```
 
 ## 技能详情
@@ -136,11 +137,13 @@ ai-skills/
 
 ### gitea-weekly-report
 
-**描述**: 获取 Gitea 组织内项目的工作日志，并自动将技术提交转换为用户能看懂的功能点。
+**描述**: 获取一个或多个 Gitea 组织内项目的工作日志，遍历全部分支提交，并自动转换为用户能看懂的功能点。
 
 **功能**:
-- 自动查询 Gitea 组织下的所有仓库
-- 根据时间范围（如上周）过滤 commit 记录
+- 自动查询一个或多个 Gitea 组织下的所有仓库
+- 先读取仓库分支列表，再遍历全部分支提交并按 SHA 去重
+- 根据自然周时间范围过滤 commit 记录，并明确输出日期范围
+- 支持仓库列表接口 fallback 与 lookback 遗漏检查
 - 将技术描述自动转换为 C端业务功能说明
 - 生成格式化的 Markdown 周报
 
