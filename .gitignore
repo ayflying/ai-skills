@@ -21,6 +21,10 @@ go.work
 sessions.json
 group_contexts.json
 chat.log
+data/
+logs/
+browser-profile/
+storageState.json
 
 # Build output
 dingtalk-agent.exe
@@ -50,6 +54,8 @@ __pycache__/
 *.pyo
 output*.jpg
 output*.png
+outputs/
+.ruff_cache/
 
 # Windows special files
 nul
