@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""调用 OpenAI GPT Image 系列模型生成或编辑图片。"""
+"""调用 OpenAI GPT Image 系列模型生成、图生图或编辑图片。"""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from typing import Any
 import requests
 
 
-DEFAULT_MODEL = "gpt-image-1.5"
+DEFAULT_MODEL = "gpt-image-2"
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 
 
@@ -166,7 +166,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="使用 OpenAI GPT Image 系列模型生成或编辑图片")
+    parser = argparse.ArgumentParser(description="使用 OpenAI GPT Image 系列模型生成、图生图或编辑图片")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     generate_parser = subparsers.add_parser("generate", help="根据文本生成图片")
@@ -179,6 +179,13 @@ def build_parser() -> argparse.ArgumentParser:
     edit_parser.add_argument("--mask", help="局部编辑遮罩图，需和第一张输入图尺寸一致并包含 alpha 通道")
     edit_parser.add_argument("--input-fidelity", choices=["high", "low"], help="参考图保真度")
     edit_parser.set_defaults(func=edit)
+
+    i2i_parser = subparsers.add_parser("i2i", help="图生图：根据参考图生成新图片")
+    add_common_args(i2i_parser)
+    i2i_parser.add_argument("--image", action="append", required=True, help="参考图路径，可重复传入")
+    i2i_parser.add_argument("--mask", help="局部编辑遮罩图，需和第一张输入图尺寸一致并包含 alpha 通道")
+    i2i_parser.add_argument("--input-fidelity", choices=["high", "low"], help="参考图保真度")
+    i2i_parser.set_defaults(func=edit)
 
     return parser
 
