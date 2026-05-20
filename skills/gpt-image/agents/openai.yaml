@@ -1,0 +1,4 @@
+﻿interface:
+  display_name: "gpt-image"
+  short_description: "使用 OpenAI GPT Image 系列模型生成和编辑图片"
+  default_prompt: "使用 GPT Image 系列模型根据提示词生成或编辑图片，并保存结果文件。"

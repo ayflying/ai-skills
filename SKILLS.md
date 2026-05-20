@@ -30,6 +30,11 @@ ai-skills/
         ├── SKILL.md       # 技能核心文档
         ├── assets/        # 浏览器扩展
         └── scripts/       # 任务服务器
+    └── gpt-image/         # OpenAI GPT Image 系列画图技能
+        ├── SKILL.md       # 技能核心文档
+        ├── README.md      # 技能说明
+        ├── .env.example   # 配置模板
+        └── scripts/       # Python 脚本
     └── ollama/            # Ollama 本地模型调用
         ├── SKILL.md       # 技能核心文档
         ├── scripts/       # Python 脚本
@@ -120,7 +125,19 @@ ai-skills/
 **使用方式**:
 详见 `skills/jimeng-ai-generator/SKILL.md`
 
+### gpt-image
 
+**描述**: OpenAI GPT Image 系列画图与图片编辑技能，支持 `gpt-image-1`、`gpt-image-1.5`、`gpt-image-2` 等版本切换。
+
+**功能**:
+- 调用 GPT Image 系列模型生成图片并保存为本地文件
+- 使用一张或多张参考图进行图片编辑或重绘
+- 支持 `png`、`jpeg`、`webp` 输出和压缩参数
+- 支持尺寸、质量、背景和审核强度配置
+- 自动处理 GPT Image API 返回的 base64 图片数据
+
+**使用方式**:
+详见 `skills/gpt-image/SKILL.md`
 
 ### ollama
 

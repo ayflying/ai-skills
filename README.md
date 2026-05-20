@@ -14,6 +14,7 @@
 | [casdoor-integration](skills/casdoor-integration/SKILL.md) | 通用的 Casdoor SSO/IAM 集成指南 | `skills/casdoor-integration/` |
 | [wechat-bot](skills/wechat-bot/SKILL.md) | 微信机器人，基于wxpy实现个人微信自动化 | `skills/wechat-bot/` |
 | [jimeng-ai-generator](skills/jimeng-ai-generator/SKILL.md) | 即梦 AI 批量生成任务自动化 | `skills/jimeng-ai-generator/` |
+| [gpt-image](skills/gpt-image/SKILL.md) | OpenAI GPT Image 系列画图与图片编辑 | `skills/gpt-image/` |
 | [ollama](skills/ollama/SKILL.md) | 调用 Ollama 本地模型 (qwen3.5:9b) | `skills/ollama/` |
 | [gitea-weekly-report](skills/gitea-weekly-report/SKILL.md) | 生成一个或多个 Gitea 组织的周报，遍历全部分支并转换技术提交为业务功能点 | `skills/gitea-weekly-report/` |
 
