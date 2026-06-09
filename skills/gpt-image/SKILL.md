@@ -16,7 +16,7 @@ npx skills add ayflying/ai-skills --skill gpt-image
 
 ## 前提条件
 
-1. 设置 `OPENAI_API_KEY`，或复制 `.env.example` 为 `.env` 后填写。
+1. 设置 `GPT_IMAGE_API_KEY`，或复制 `.env.example` 为 `.env` 后填写。
 2. 安装依赖：
    ```bash
    pip install requests
@@ -103,6 +103,7 @@ python scripts/gpt_image.py edit "只把沙发替换成浅绿色，其余保持�
 - GPT Image 模型默认返回 `b64_json`，脚本会自动解码并保存为图片文件。
 - GPT Image 系列主要使用 `v1/images/generations` 和 `v1/images/edits`；图生图属于 `edits` 端点的参考图生成能力。
 - `output_format` 可用 `png`、`jpeg`、`webp`；`jpeg` 和 `webp` 可配合 `--compression`。
+- 推荐使用 `GPT_IMAGE_API_KEY` 和 `GPT_IMAGE_BASE_URL`，避免和容器或其他 AI 服务的 `OPENAI_*` 环境变量冲突；脚本仍兼容旧变量。
 - 不要提交 `.env` 或任何真实 API Key。
 
 ## 官方文档

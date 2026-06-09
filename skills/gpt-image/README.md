@@ -17,9 +17,11 @@ cp .env.example .env
 填写：
 
 ```env
-OPENAI_API_KEY=your-openai-api-key
-OPENAI_BASE_URL=https://api.openai.com/v1
+GPT_IMAGE_API_KEY=your-gpt-image-api-key
+GPT_IMAGE_BASE_URL=https://api.openai.com/v1
 ```
+
+脚本仍兼容旧的 `OPENAI_API_KEY` 和 `OPENAI_BASE_URL`，但推荐使用 `GPT_IMAGE_*`，避免和容器或其他 AI 服务的全局环境变量冲突。
 
 安装依赖：
 

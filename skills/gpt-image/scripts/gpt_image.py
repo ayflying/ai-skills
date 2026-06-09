@@ -16,6 +16,10 @@ import requests
 
 DEFAULT_MODEL = "gpt-image-2"
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
+API_KEY_ENV = "GPT_IMAGE_API_KEY"
+BASE_URL_ENV = "GPT_IMAGE_BASE_URL"
+LEGACY_API_KEY_ENV = "OPENAI_API_KEY"
+LEGACY_BASE_URL_ENV = "OPENAI_BASE_URL"
 
 
 def load_env(path: Path) -> None:
@@ -33,14 +37,15 @@ def load_env(path: Path) -> None:
 
 
 def api_headers() -> dict[str, str]:
-    api_key = os.environ.get("OPENAI_API_KEY")
+    api_key = os.environ.get(API_KEY_ENV) or os.environ.get(LEGACY_API_KEY_ENV)
     if not api_key:
-        raise RuntimeError("缺少 OPENAI_API_KEY，请设置环境变量或在 .env 中填写。")
+        raise RuntimeError(f"缺少 {API_KEY_ENV}，请设置环境变量或在 .env 中填写。")
     return {"Authorization": f"Bearer {api_key}"}
 
 
 def base_url() -> str:
-    return os.environ.get("OPENAI_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
+    url = os.environ.get(BASE_URL_ENV) or os.environ.get(LEGACY_BASE_URL_ENV, DEFAULT_BASE_URL)
+    return url.rstrip("/")
 
 
 def ensure_output_dir(path: Path) -> None:
