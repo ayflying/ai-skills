@@ -104,6 +104,7 @@ python scripts/gpt_image.py edit "只把沙发替换成浅绿色，其余保持�
 - GPT Image 系列主要使用 `v1/images/generations` 和 `v1/images/edits`；图生图属于 `edits` 端点的参考图生成能力。
 - `output_format` 可用 `png`、`jpeg`、`webp`；`jpeg` 和 `webp` 可配合 `--compression`。
 - 推荐使用 `GPT_IMAGE_API_KEY` 和 `GPT_IMAGE_BASE_URL`，避免和容器或其他 AI 服务的 `OPENAI_*` 环境变量冲突；脚本仍兼容旧变量。
+- `GPT_IMAGE_BASE_URL` 可填写完整 `/v1` 地址，也可填写网关根地址；当地址只有域名根路径时，脚本会自动补 `/v1`。
 - 不要提交 `.env` 或任何真实 API Key。
 
 ## 官方文档

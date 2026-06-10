@@ -21,6 +21,8 @@ GPT_IMAGE_API_KEY=your-gpt-image-api-key
 GPT_IMAGE_BASE_URL=https://api.openai.com/v1
 ```
 
+`GPT_IMAGE_BASE_URL` 可以填写完整 OpenAI 兼容地址（如 `https://api.openai.com/v1`），也可以填写网关根地址（如 `https://ai-token.yunloli.cn/`），脚本会在根地址后自动补 `/v1`。
+
 脚本仍兼容旧的 `OPENAI_API_KEY` 和 `OPENAI_BASE_URL`，但推荐使用 `GPT_IMAGE_*`，避免和容器或其他 AI 服务的全局环境变量冲突。
 
 安装依赖：

@@ -10,6 +10,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 import requests
 
@@ -45,7 +46,15 @@ def api_headers() -> dict[str, str]:
 
 def base_url() -> str:
     url = os.environ.get(BASE_URL_ENV) or os.environ.get(LEGACY_BASE_URL_ENV, DEFAULT_BASE_URL)
-    return url.rstrip("/")
+    return normalize_base_url(url)
+
+
+def normalize_base_url(url: str) -> str:
+    normalized = url.strip().rstrip("/")
+    parts = urlsplit(normalized)
+    if parts.scheme and parts.netloc and parts.path in ("", "/"):
+        return urlunsplit((parts.scheme, parts.netloc, "/v1", "", ""))
+    return normalized
 
 
 def ensure_output_dir(path: Path) -> None:
