@@ -21,16 +21,14 @@ pip install -r requirements.txt
 最小配置：
 
 ```env
-TEAMBITION_GATEWAY=https://open.teambition.com/api
 TEAMBITION_USER_TOKEN=your_user_token
 TEAMBITION_TENANT_ID=your_organization_id
-TEAMBITION_OPERATOR_ID=
 ```
 
 - `TEAMBITION_USER_TOKEN`: 个人账号 token，权限与当前 Teambition 登录账号一致。
 - `TEAMBITION_TENANT_ID`: 企业 ID，例如企业链接 `/organization/<id>/my` 中的 `<id>`。
-- `TEAMBITION_OPERATOR_ID`: 可选。个人 token 通常不需要；个别接口要求操作者时再填写。
-- 其他设备使用时，只需要安装技能、安装 Python 依赖，并填入自己的 `.env`。
+- 默认网关是 `https://open.teambition.com/api`，不用写入 `.env`。
+- 其他设备使用时，只需要安装技能、安装 Python 依赖，并填入自己的 `TEAMBITION_USER_TOKEN` 和 `TEAMBITION_TENANT_ID`。
 
 ## 示例
 

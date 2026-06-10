@@ -1,14 +1,12 @@
 # Teambition Bug OpenAPI 参考
 
-网关默认使用 `https://open.teambition.com/api`。本技能只使用个人账号 `userToken`，权限与当前 Teambition 登录账号一致。
+默认网关是 `https://open.teambition.com/api`。本技能只使用个人账号 `userToken`，权限与当前 Teambition 登录账号一致。
 
 所有业务接口都需要：
 
 - `Authorization: Bearer <TEAMBITION_USER_TOKEN>`
 - `X-Tenant-Id: <企业 ID>`
 - `X-Tenant-Type: organization`
-
-`x-operator-id` / `X-Operator-Id` 是可选头。个人 token 通常按当前账号权限执行；如果某个企业接口要求操作者，再填写 `TEAMBITION_OPERATOR_ID`。
 
 ## 任务查询与上下文
 

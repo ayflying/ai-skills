@@ -34,13 +34,10 @@ cp .env.example .env
 
 - `TEAMBITION_TENANT_ID`: 企业 ID，对应请求头 `X-Tenant-Id`。
 - `TEAMBITION_USER_TOKEN`: 个人账号 token，权限与当前 Teambition 登录账号一致。
-- `TEAMBITION_GATEWAY`: 默认 `https://open.teambition.com/api`。
-
-可选配置：
-
-- `TEAMBITION_OPERATOR_ID`: 操作者用户 ID。个人 token 通常不需要；如果某个企业接口要求操作者，再从当前用户信息或请求头中补上。
 
 真实 token 只能放在本地 `.env` 或当前 Shell 环境变量中，不能写入仓库文件。其他设备安装技能后，只要复制 `.env.example`、填入自己的 `TEAMBITION_USER_TOKEN` 和 `TEAMBITION_TENANT_ID`，即可按该账号的项目权限使用。
+
+脚本默认使用 `https://open.teambition.com/api`，通常不需要配置网关地址。只有使用代理或私有网关时，才临时设置 `TEAMBITION_GATEWAY` 覆盖默认值。
 
 企业 ID 可从企业链接 `/organization/<id>/my` 中取得。项目链接 `/project/<id>/...` 只能提供项目 ID，不能替代企业 ID。
 

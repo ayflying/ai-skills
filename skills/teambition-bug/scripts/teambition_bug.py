@@ -112,22 +112,15 @@ class TeambitionClient:
 
         self.gateway = (env("TEAMBITION_GATEWAY", default=DEFAULT_GATEWAY) or DEFAULT_GATEWAY).rstrip("/")
         self.tenant_id = env("TEAMBITION_TENANT_ID", required=True) or ""
-        self.operator_id = env("TEAMBITION_OPERATOR_ID", required=False)
         self.token = env("TEAMBITION_USER_TOKEN", required=True) or ""
 
-    def headers(self, include_operator: bool = False) -> dict[str, str]:
-        headers = {
+    def headers(self) -> dict[str, str]:
+        return {
             "Authorization": f"Bearer {self.token}",
             "X-Tenant-Id": self.tenant_id,
             "X-Tenant-Type": "organization",
             "Content-Type": "application/json",
         }
-        if include_operator or self.operator_id:
-            if not self.operator_id:
-                return headers
-            headers["x-operator-id"] = self.operator_id
-            headers["X-Operator-Id"] = self.operator_id
-        return headers
 
     def request(
         self,
@@ -136,13 +129,12 @@ class TeambitionClient:
         *,
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
-        include_operator: bool = False,
     ) -> Any:
         url = self.gateway + (path if path.startswith("/") else f"/{path}")
         response = requests.request(
             method,
             url,
-            headers=self.headers(include_operator=include_operator),
+            headers=self.headers(),
             params={k: v for k, v in (params or {}).items() if v is not None},
             json=json_body,
             timeout=30,
@@ -234,13 +226,12 @@ def cmd_search(args: argparse.Namespace) -> None:
             "pageToken": args.page_token,
             "pageSize": args.page_size,
         },
-        include_operator=bool(client.operator_id),
     )
     print_json(result)
 
 
 def get_task(client: TeambitionClient, task_id: str) -> dict[str, Any]:
-    result = client.request("GET", "/v3/task/query", params={"taskId": task_id}, include_operator=bool(client.operator_id))
+    result = client.request("GET", "/v3/task/query", params={"taskId": task_id})
     return first_task(result)
 
 
@@ -359,7 +350,7 @@ def cmd_comment(args: argparse.Namespace) -> None:
     body: dict[str, Any] = {"content": args.content, "renderMode": args.render_mode}
     if args.mention_user_id:
         body["mentionUserIds"] = args.mention_user_id
-    result = client.request("POST", f"/v3/task/{args.task_id}/comment", json_body=body, include_operator=True)
+    result = client.request("POST", f"/v3/task/{args.task_id}/comment", json_body=body)
     print_json(result)
 
 
@@ -402,7 +393,7 @@ def cmd_ask(args: argparse.Namespace) -> None:
 
 
 def list_statuses(client: TeambitionClient, task_id: str) -> Any:
-    return client.request("GET", f"/v3/task/{task_id}/tfs", include_operator=bool(client.operator_id))
+    return client.request("GET", f"/v3/task/{task_id}/tfs")
 
 
 def pick_status(statuses: Any, status_name: str | None, status_id: str | None) -> dict[str, Any]:
@@ -437,7 +428,6 @@ def cmd_start(args: argparse.Namespace) -> None:
         "PUT",
         f"/v3/task/{args.task_id}/taskflowstatus",
         json_body={k: v for k, v in body.items() if v is not None},
-        include_operator=True,
     )
     print_json(result)
 
@@ -453,7 +443,6 @@ def cmd_update_status(args: argparse.Namespace) -> None:
         "PUT",
         f"/v3/task/{args.task_id}/taskflowstatus",
         json_body={k: v for k, v in body.items() if v is not None},
-        include_operator=True,
     )
     print_json(result)
 
@@ -461,7 +450,7 @@ def cmd_update_status(args: argparse.Namespace) -> None:
 def cmd_update_title(args: argparse.Namespace) -> None:
     client = TeambitionClient()
     confirm_or_exit(f"将更新任务 {args.task_id} 标题。", args.yes)
-    print_json(client.request("PUT", f"/v3/task/{args.task_id}/content", json_body={"content": args.title}, include_operator=True))
+    print_json(client.request("PUT", f"/v3/task/{args.task_id}/content", json_body={"content": args.title}))
 
 
 def cmd_update_note(args: argparse.Namespace) -> None:
@@ -472,7 +461,6 @@ def cmd_update_note(args: argparse.Namespace) -> None:
             "PUT",
             f"/v3/task/{args.task_id}/note",
             json_body={"note": args.note, "renderMode": args.render_mode},
-            include_operator=True,
         )
     )
 
@@ -485,7 +473,6 @@ def cmd_update_executor(args: argparse.Namespace) -> None:
             "PUT",
             f"/v3/task/{args.task_id}/executor",
             json_body={"executorId": args.executor_id},
-            include_operator=True,
         )
     )
 
@@ -503,7 +490,7 @@ def cmd_update_priority(args: argparse.Namespace) -> None:
         value["priority"] = int(args.priority)
     except ValueError:
         value["priorityName"] = args.priority
-    print_json(client.request("PUT", f"/v3/task/{args.task_id}/priority", json_body=value, include_operator=True))
+    print_json(client.request("PUT", f"/v3/task/{args.task_id}/priority", json_body=value))
 
 
 def cmd_update_due_date(args: argparse.Namespace) -> None:
@@ -514,7 +501,6 @@ def cmd_update_due_date(args: argparse.Namespace) -> None:
             "PUT",
             f"/v3/task/{args.task_id}/dueDate",
             json_body={"dueDate": args.due_date},
-            include_operator=True,
         )
     )
 
@@ -539,7 +525,6 @@ def cmd_create_bug_group(args: argparse.Namespace) -> None:
             "POST",
             f"/v3/project/{args.project_id}/bug/commongroup/create",
             json_body={k: v for k, v in body.items() if v is not None},
-            include_operator=True,
         )
     )
 
