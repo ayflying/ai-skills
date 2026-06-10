@@ -42,6 +42,12 @@ ai-skills/
     └── gitea-weekly-report/ # Gitea 周报生成技能
         ├── SKILL.md       # 技能核心文档
         └── README.md      # 技能说明
+    └── teambition-bug/    # Teambition Bug 直连 API 技能
+        ├── SKILL.md       # 技能核心文档
+        ├── README.md      # 技能说明
+        ├── .env.example   # 配置模板
+        ├── references/    # API 参考
+        └── scripts/       # Python 脚本
 ```
 
 ## 技能详情
@@ -166,6 +172,21 @@ ai-skills/
 
 **使用方式**:
 详见 `skills/gitea-weekly-report/SKILL.md`
+
+### teambition-bug
+
+**描述**: 通过 Teambition 官方 OpenAPI 读取、分析、留言和推进 bug/缺陷任务。
+
+**功能**:
+- 解析 Teambition 项目、任务和视图链接中的 ID
+- 查询项目任务，读取 bug 标题、备注、留言动态和任务进展
+- 提取富文本中的图片、附件和链接信息
+- 自动留言追问信息不足的 bug
+- 将任务状态推进到“修改中”等工作流状态
+- 更新标题、备注、执行人、优先级、截止时间和缺陷分类
+
+**使用方式**:
+详见 `skills/teambition-bug/SKILL.md`
 
 ## 如何添加新技能
 
