@@ -71,24 +71,23 @@ class ApiError(RuntimeError):
     pass
 
 
-def load_dotenv(path: Path) -> None:
-    if not path.exists():
-        return
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-        os.environ.setdefault(key, value)
-
-
 def env(name: str, required: bool = False, default: str | None = None) -> str | None:
     value = os.environ.get(name, default)
     if required and not value:
         raise ConfigError(f"缺少环境变量: {name}")
     return value
+
+
+def set_runtime_env(args: argparse.Namespace) -> None:
+    mapping = {
+        "tenant_id": "TEAMBITION_TENANT_ID",
+        "user_token": "TEAMBITION_USER_TOKEN",
+        "self_user_id": "TEAMBITION_SELF_USER_ID",
+    }
+    for arg_name, env_name in mapping.items():
+        value = getattr(args, arg_name, None)
+        if value:
+            os.environ[env_name] = value
 
 
 def parse_teambition_url(url: str) -> dict[str, str]:
@@ -504,6 +503,36 @@ def first_task(result: Any) -> dict[str, Any]:
     if isinstance(result, dict):
         return result
     raise ApiError("无法识别任务响应格式。")
+
+
+def cmd_check_config(args: argparse.Namespace) -> None:
+    params = {
+        "TEAMBITION_TENANT_ID": env("TEAMBITION_TENANT_ID"),
+        "TEAMBITION_USER_TOKEN": env("TEAMBITION_USER_TOKEN"),
+        "TEAMBITION_SELF_USER_ID": env("TEAMBITION_SELF_USER_ID"),
+    }
+    result = {"configured": {}, "missing": []}
+    for name, value in params.items():
+        if value:
+            display = value[:8] + "..." if len(value) > 8 else value
+            result["configured"][name] = display
+        else:
+            result["missing"].append(name)
+
+    if result["missing"]:
+        result["status"] = "incomplete"
+        result["hint"] = (
+            "缺少参数: " + ", ".join(result["missing"])
+            + "。请按以下方式获取：\n"
+            "1. TENANT_ID: 浏览器地址栏 /organization/<id>/my 中的 id\n"
+            "2. USER_TOKEN: F12 -> Network -> 任意请求 Headers -> Authorization 中 Bearer 后面的值\n"
+            "3. SELF_USER_ID: F12 -> Network -> 任意请求 Headers -> X-User-Id 的值\n"
+            "获取后可通过 --tenant-id / --user-token / --self-user-id 命令行参数传入，"
+            "或保存到系统环境变量。"
+        )
+    else:
+        result["status"] = "ok"
+    print_json(result)
 
 
 def cmd_parse_url(args: argparse.Namespace) -> None:
@@ -1073,7 +1102,13 @@ def cmd_create_bug_group(args: argparse.Namespace) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Teambition Bug OpenAPI helper")
+    parser.add_argument("--tenant-id", dest="tenant_id", help="TEAMBITION_TENANT_ID，企业 ID")
+    parser.add_argument("--user-token", dest="user_token", help="TEAMBITION_USER_TOKEN，个人账号 token")
+    parser.add_argument("--self-user-id", dest="self_user_id", help="TEAMBITION_SELF_USER_ID，当前用户 ID")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    p = sub.add_parser("check-config", help="检测参数配置是否完整")
+    p.set_defaults(func=cmd_check_config)
 
     p = sub.add_parser("parse-url", help="解析 Teambition 链接")
     p.add_argument("--url", required=True)
@@ -1240,8 +1275,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
-    load_dotenv(ROOT / ".env")
     args = build_parser().parse_args()
+    set_runtime_env(args)
     try:
         args.func(args)
         return 0

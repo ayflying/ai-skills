@@ -24,21 +24,88 @@ cd skills/teambition-bug
 pip install -r requirements.txt
 ```
 
-2. 复制 `.env.example` 为 `.env`，填入个人 token 和企业 ID：
+## 必须配置的参数
 
-```bash
-cp .env.example .env
+脚本需要三个参数才能正常运行：
+
+| 参数 | 说明 |
+|------|------|
+| `TEAMBITION_TENANT_ID` | 企业 ID，对应请求头 `X-Tenant-Id` |
+| `TEAMBITION_USER_TOKEN` | 个人账号 token，权限与当前 Teambition 登录账号一致 |
+| `TEAMBITION_SELF_USER_ID` | 当前 Teambition 账号用户 ID，用于只读取和处理第一执行者为自己的任务 |
+
+### 如何获取这三个参数
+
+**获取 TEAMBITION_TENANT_ID（企业 ID）：**
+1. 登录 Teambition，进入任意项目
+2. 看浏览器地址栏，URL 格式为 `https://www.teambition.com/organization/<企业ID>/my/...`
+3. 复制 `organization/` 后面的那串 ID 即可
+
+**获取 TEAMBITION_USER_TOKEN（个人 token）：**
+1. 登录 Teambition 网页版
+2. 按 F12 打开浏览器开发者工具
+3. 切换到 Network（网络）标签页
+4. 在 Teambition 页面进行任意操作（如刷新、点任务）
+5. 在 Network 列表中找到任意一个 API 请求（通常是 `/v3/` 或 `/api/` 开头的）
+6. 点击该请求，在 Headers 标签页中找到 `Authorization` 请求头
+7. 复制 `Bearer ` 后面的那串 token
+
+**获取 TEAMBITION_SELF_USER_ID（当前用户 ID）：**
+1. 登录 Teambition 网页版
+2. 按 F12 打开浏览器开发者工具
+3. 切换到 Console（控制台）标签页
+4. 输入 `document.cookie.match(/user_id=([^;]+)/)?.[1]` 并回车
+5. 或者在 Network 列表中找到任意 API 请求，在 Headers 中找到 `X-User-Id` 请求头的值
+6. 也可以在请求体/响应体中查找 `userId` 字段
+
+### 存储方式（二选一）
+
+获取到参数后，有两种存储方式，请询问用户选择哪种：
+
+**方式一：仅当前对话使用（推荐首次尝试）**
+
+直接在对话中告诉 AI 这三个值，AI 会将它们作为环境变量传递给脚本。关闭对话后失效，不污染系统环境。
+
+示例对话：
+```
+我的 Teambition 参数：
+- TENANT_ID: 5f1234567890abcdef123456
+- USER_TOKEN: eyJhbGciOiJIUzI1NiIs...
+- SELF_USER_ID: 5f9876543210fedcba987654
 ```
 
-必须配置：
+AI 会自动在每次调用脚本时带上这些参数。
 
-- `TEAMBITION_TENANT_ID`: 企业 ID，对应请求头 `X-Tenant-Id`。
-- `TEAMBITION_USER_TOKEN`: 个人账号 token，权限与当前 Teambition 登录账号一致。
-- `TEAMBITION_SELF_USER_ID`: 当前 Teambition 账号用户 ID，用于只读取和处理第一执行者为自己的任务，避免多人争抢。
+**方式二：保存到电脑环境变量（持久化，所有对话可用）**
 
-真实 token 只能放在本地 `.env` 或当前 Shell 环境变量中，不能写入仓库文件。其他设备安装技能后，只要复制 `.env.example`、填入自己的 `TEAMBITION_USER_TOKEN`、`TEAMBITION_TENANT_ID` 和 `TEAMBITION_SELF_USER_ID`，即可按该账号的企业权限使用。
+如果用户希望以后每个对话都能直接使用，需要将参数写入系统环境变量。
 
-企业 ID 可从企业链接 `/organization/<id>/my` 中取得。产品/项目 ID 不写入全局环境变量；不同对话处理不同产品时，从用户在当前对话提供的 Teambition 产品/项目分享链接中解析。脚本默认使用 `https://open.teambition.com/api`，通常不需要配置网关地址。
+Windows PowerShell（管理员）：
+```powershell
+[Environment]::SetEnvironmentVariable("TEAMBITION_TENANT_ID", "<你的企业ID>", "User")
+[Environment]::SetEnvironmentVariable("TEAMBITION_USER_TOKEN", "<你的token>", "User")
+[Environment]::SetEnvironmentVariable("TEAMBITION_SELF_USER_ID", "<你的用户ID>", "User")
+```
+
+macOS/Linux：
+```bash
+echo 'export TEAMBITION_TENANT_ID="<你的企业ID>"' >> ~/.bashrc
+echo 'export TEAMBITION_USER_TOKEN="<你的token>"' >> ~/.bashrc
+echo 'export TEAMBITION_SELF_USER_ID="<你的用户ID>"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+保存后重启终端或新对话即可生效。
+
+### 配置检测
+
+运行以下命令检测参数是否已配置：
+
+```bash
+python scripts/teambition_bug.py check-config
+```
+
+如果缺少参数，会提示缺少哪个以及如何获取。
 
 ## 常用命令
 
