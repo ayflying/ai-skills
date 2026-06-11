@@ -20,6 +20,8 @@
 | 获取任务进展 | `GET /v3/task/{taskId}/traces` | 用于读取任务进展富文本 |
 | 富文本渲染 | `GET /v3/task/rtf/render` | 用 `rtfFields` 参数提取备注、自定义富文本字段、任务进展中的 HTML、图片和附件链接 |
 
+脚本会额外递归扫描任务详情、动态和进展原始 JSON 中的 URL 字段，并用 `download-images` 下载可访问图片。Teambition 有时只返回 `[图片]` 占位且不暴露 URL，此时需要让用户补充可访问截图或截图文字。
+
 ## 留言和状态
 
 | 能力 | 方法和路径 | 请求体 |

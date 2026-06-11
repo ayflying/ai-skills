@@ -39,6 +39,7 @@ TEAMBITION_SELF_USER_ID=your_user_id
 python scripts/teambition_bug.py parse-url --url "https://www.teambition.com/project/6a292e9b13e121404ffea8c5/tasks/view/6a292e9b8e598fd9e0fb2515"
 python scripts/teambition_bug.py search --project-id "<projectId>" --tql "content CONTAIN \"登录\""
 python scripts/teambition_bug.py context --task-id "<taskId>"
+python scripts/teambition_bug.py download-images --task-id "<taskId>"
 python scripts/teambition_bug.py comments --task-id "<taskId>"
 python scripts/teambition_bug.py reply --task-id "<taskId>" --reply-to "<activityId>" --content "我已开始排查。" --yes
 python scripts/teambition_bug.py ask --task-id "<taskId>" --question "请先说明如何复现：页面入口、具体操作步骤、账号/数据/环境、期望结果和实际结果。"
@@ -52,5 +53,7 @@ python scripts/teambition_bug.py start --task-id "<taskId>" --status-name "修�
 如果运行 `search`、`list-bug-groups` 或 `create-bug-group` 时没有 `projectId`，先让用户发产品/项目分享链接，再执行 `parse-url --url "<链接>"` 获取。
 
 批量处理 bug 时先过滤第一执行者为自己的任务，再按紧急程度从高到低推进。遇到需求不明确的任务，必须先问清楚如何复现，包括页面入口、具体操作步骤、账号/数据/环境、期望结果和实际结果；留言追问后继续下一个任务，完成后再回头检查已追问任务是否有新回复。开始处理时优先把状态/标签状态改为“修改中”，没有则匹配“修复中、处理中、进行中、已认领、已领取”等表示正在处理的状态。
+
+回复要简单明了，让策划、测试、运营等非技术人员也能看懂。读取上下文时如果有截图，必须下载并识别图片内容；如果只有 `[图片]` 占位但没有可访问图片链接，要留言请用户补充可访问截图或把截图关键信息转成文字。
 
 更多说明见 `SKILL.md`。

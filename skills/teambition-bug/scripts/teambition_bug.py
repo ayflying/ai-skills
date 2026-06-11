@@ -6,12 +6,13 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import mimetypes
 import os
 import re
 import sys
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit
 
 try:
     import requests
@@ -39,6 +40,25 @@ WRITE_COMMANDS = {
     "update-priority",
     "update-due-date",
     "create-bug-group",
+}
+
+URL_RE = re.compile(r"https?://[^\s\"'<>\\)\\]]+")
+IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg")
+IMAGE_URL_HINTS = ("image", "img", "screenshot", "thumbnail", "preview", "pic", "photo")
+FILE_URL_KEYS = {
+    "url",
+    "src",
+    "href",
+    "downloadUrl",
+    "downloadURL",
+    "fileUrl",
+    "fileURL",
+    "thumbnail",
+    "thumbnailUrl",
+    "previewUrl",
+    "previewURL",
+    "imageUrl",
+    "imageURL",
 }
 
 
@@ -251,6 +271,78 @@ def extract_links_from_html(text: str) -> dict[str, list[str]]:
     }
 
 
+def classify_media_url(url: str, key_hint: str = "") -> str:
+    lowered = url.lower()
+    key_lowered = key_hint.lower()
+    path = urlsplit(url).path.lower()
+    if path.endswith(IMAGE_EXTENSIONS) or any(hint in lowered for hint in IMAGE_URL_HINTS):
+        return "images"
+    if any(hint in key_lowered for hint in IMAGE_URL_HINTS):
+        return "images"
+    if any(part in lowered for part in ("download", "attachment", "file", "oss", "alicdn")):
+        return "attachments"
+    return "links"
+
+
+def add_media_url(resources: dict[str, list[str]], url: str, key_hint: str = "") -> None:
+    cleaned = html.unescape(url.strip().rstrip(".,;"))
+    if cleaned.startswith(("http://", "https://")):
+        resources[classify_media_url(cleaned, key_hint)].append(cleaned)
+
+
+def extract_media_resources(value: Any, key_hint: str = "") -> dict[str, list[str]]:
+    resources = {"images": [], "attachments": [], "links": []}
+
+    def visit(item: Any, current_key: str = "") -> None:
+        if isinstance(item, str):
+            stripped = item.strip()
+            if stripped.startswith(("{", "[")):
+                try:
+                    visit(json.loads(stripped), current_key)
+                    return
+                except ValueError:
+                    pass
+            for url in URL_RE.findall(item):
+                add_media_url(resources, url, current_key)
+            if "<" in item and ">" in item:
+                extracted = extract_links_from_html(item)
+                for bucket, urls in extracted.items():
+                    resources[bucket].extend(urls)
+            return
+        if isinstance(item, dict):
+            for key, child in item.items():
+                if key in FILE_URL_KEYS and isinstance(child, str):
+                    add_media_url(resources, child, key)
+                visit(child, key)
+            return
+        if isinstance(item, list):
+            for child in item:
+                visit(child, current_key)
+
+    visit(value, key_hint)
+    return {key: sorted(set(urls)) for key, urls in resources.items()}
+
+
+def merge_media_resources(*groups: dict[str, list[str]]) -> dict[str, list[str]]:
+    merged = {"images": [], "attachments": [], "links": []}
+    for group in groups:
+        for key in merged:
+            merged[key].extend(group.get(key, []))
+    return {key: sorted(set(value)) for key, value in merged.items()}
+
+
+def count_image_placeholders(value: Any) -> int:
+    text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+    return text.count("[图片]")
+
+
+def safe_download_name(url: str, index: int, content_type: str | None = None) -> str:
+    suffix = Path(urlsplit(url).path).suffix.lower()
+    if not suffix or len(suffix) > 8:
+        suffix = mimetypes.guess_extension((content_type or "").split(";")[0].strip()) or ".img"
+    return f"image-{index:02d}{suffix}"
+
+
 def summarize_task(task: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": task.get("id") or task.get("taskId"),
@@ -320,6 +412,9 @@ def cmd_get(args: argparse.Namespace) -> None:
         output["activities"] = list_activities(client, args.task_id, page_size=args.page_size)
     if args.with_rich_text:
         output["richTextLinks"] = extract_links_from_html(task.get("note") or "")
+    output["mediaResources"] = extract_media_resources(task)
+    output["imagePlaceholders"] = count_image_placeholders(task)
+    output["imageAnalysisRequired"] = bool(output["mediaResources"]["images"] or output["imagePlaceholders"])
     if output.get("rawTask") is None:
         output.pop("rawTask", None)
     print_json(output)
@@ -380,6 +475,13 @@ def cmd_context(args: argparse.Namespace) -> None:
         for key in rich_text:
             rich_text[key].extend(extracted[key])
     rich_text = {key: sorted(set(value)) for key, value in rich_text.items()}
+    media_resources = merge_media_resources(
+        rich_text,
+        extract_media_resources(task),
+        extract_media_resources(activities),
+        extract_media_resources(traces),
+    )
+    image_placeholders = count_image_placeholders(task) + count_image_placeholders(activities) + count_image_placeholders(traces)
 
     print_json(
         {
@@ -387,6 +489,9 @@ def cmd_context(args: argparse.Namespace) -> None:
             "activities": activities,
             "traces": traces,
             "richTextLinks": rich_text,
+            "mediaResources": media_resources,
+            "imagePlaceholders": image_placeholders,
+            "imageAnalysisRequired": bool(media_resources["images"] or image_placeholders),
             "missingInfoHints": guess_missing_info(task, activities),
         }
     )
@@ -424,6 +529,45 @@ def cmd_render_rich_text(args: argparse.Namespace) -> None:
     print_json({"result": result, "links": extract_links_from_html(html.unescape(rendered))})
 
 
+def cmd_download_images(args: argparse.Namespace) -> None:
+    client = TeambitionClient()
+    task = get_task(client, args.task_id, action="下载图片")
+    activities = list_activities(client, args.task_id, page_size=args.page_size)
+    try:
+        traces = client.request("GET", f"/v3/task/{args.task_id}/traces")
+    except ApiError:
+        traces = []
+    resources = merge_media_resources(
+        extract_media_resources(task),
+        extract_media_resources(activities),
+        extract_media_resources(traces),
+    )
+    image_urls = resources["images"]
+    output_dir = Path(args.output_dir or ROOT / "outputs" / "teambition-images" / args.task_id)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    downloaded = []
+    for index, url in enumerate(image_urls, start=1):
+        response = requests.get(url, headers=client.headers(), timeout=30)
+        if response.status_code >= 400:
+            downloaded.append({"url": url, "error": f"HTTP {response.status_code}"})
+            continue
+        file_path = output_dir / safe_download_name(url, index, response.headers.get("Content-Type"))
+        file_path.write_bytes(response.content)
+        downloaded.append({"url": url, "path": str(file_path), "bytes": len(response.content)})
+
+    placeholders = count_image_placeholders(task) + count_image_placeholders(activities) + count_image_placeholders(traces)
+    print_json(
+        {
+            "task": summarize_task(task),
+            "outputDir": str(output_dir),
+            "downloaded": downloaded,
+            "imagePlaceholders": placeholders,
+            "note": "下载后必须查看图片内容再判断 bug；如果只有图片占位没有 URL，请留言要求补充可访问截图。",
+        }
+    )
+
+
 def cmd_comment(args: argparse.Namespace) -> None:
     client = TeambitionClient()
     get_task(client, args.task_id, action="留言")
@@ -445,11 +589,11 @@ def cmd_reply(args: argparse.Namespace) -> None:
 
 
 REPLY_TEMPLATES = {
-    "need-info": "信息还不够定位，请先说明如何复现：1. 从哪个页面/入口开始；2. 具体操作步骤；3. 使用的账号、数据或环境；4. 期望结果；5. 实际结果或报错；6. 相关截图或录屏。",
-    "received": "已收到，我先看一下问题上下文和复现路径。",
-    "investigating": "我已经开始排查，会先确认复现路径和相关日志，有进展后同步。",
-    "fixed": "问题已处理，请帮忙重新验证。如仍有异常，请补充最新现象和截图。",
-    "cannot-reproduce": "当前信息下暂未复现，请补充完整复现方式：页面入口、具体操作步骤、账号/数据/环境、期望结果和实际结果。",
+    "need-info": "我这边还缺少复现方式，暂时不能准确定位。请补充：从哪个页面进入、具体怎么操作、用的账号/数据、期望看到什么、实际出现了什么，最好再补一张能看清的截图。",
+    "received": "已收到，我先确认复现路径和截图信息，有进展后同步。",
+    "investigating": "我已开始排查，会先按你提供的步骤复现问题，有结果后同步。",
+    "fixed": "问题已处理，请按原来的操作步骤重新验证一下。如还有异常，麻烦补充最新截图和现象。",
+    "cannot-reproduce": "我按现有信息还没复现出来。请补充更完整的操作步骤、使用账号/数据、期望结果和实际现象。",
     "done": "已处理完成，麻烦确认验收。",
 }
 
@@ -737,6 +881,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--rtf-fields")
     p.add_argument("--rtf-fields-file")
     p.set_defaults(func=cmd_render_rich_text)
+
+    p = sub.add_parser("download-images", help="下载任务上下文中的图片，供 AI 识别截图内容")
+    p.add_argument("--task-id", required=True)
+    p.add_argument("--output-dir")
+    p.add_argument("--page-size", type=int, default=50)
+    p.set_defaults(func=cmd_download_images)
 
     p = sub.add_parser("comment", help="评论任务")
     p.add_argument("--task-id", required=True)

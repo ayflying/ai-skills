@@ -2,7 +2,7 @@
 name: teambition-bug
 description: |
   Teambition Bug 管理技能，使用个人账号 userToken 直接调用官方 OpenAPI 读取、分析、留言和推进项目缺陷任务，不依赖 teambition_cli 或 MCP。
-  Use when: (1) 需要读取 Teambition bug/缺陷任务详情、备注、图片附件和留言动态 (2) 需要按紧急程度排队处理 bug (3) 需要对疑问信息自动留言追问并继续处理后续任务 (4) 需要修改任务状态为修改中、修复中、已认领等正在处理语义状态，或更新标题、备注、执行人、优先级、截止时间 (5) 需要查询或创建缺陷分类
+  Use when: (1) 需要读取 Teambition bug/缺陷任务详情、备注、截图图片附件和留言动态 (2) 需要识别截图内容来判断 bug 原因 (3) 需要按紧急程度排队处理 bug (4) 需要用策划等非技术人员能看懂的语言回复疑问和进展 (5) 需要修改任务状态为修改中、修复中、已认领等正在处理语义状态，或更新标题、备注、执行人、优先级、截止时间
 ---
 
 # Teambition Bug 管理
@@ -52,6 +52,9 @@ python scripts/teambition_bug.py search --project-id "<projectId>" --tql "conten
 # 读取 bug 完整上下文：标题、备注、动态、进展、富文本图片/附件链接
 python scripts/teambition_bug.py context --task-id "<taskId>"
 
+# 下载可访问截图，供 AI 识别图片内容
+python scripts/teambition_bug.py download-images --task-id "<taskId>"
+
 # 只读取留言/动态记录
 python scripts/teambition_bug.py activities --task-id "<taskId>"
 
@@ -82,6 +85,8 @@ python scripts/teambition_bug.py update-status --task-id "<taskId>" --status-nam
 - 任务列表必须按紧急程度从高到低处理；优先看任务 `priority`、优先级名称、截止时间、标题/备注中的紧急关键词，再决定顺序。
 - 只读取和处理第一执行者为自己的任务。任务列表必须先按 `TEAMBITION_SELF_USER_ID` 过滤；单任务读取、留言、改状态或更新字段前，也必须确认第一执行者等于 `TEAMBITION_SELF_USER_ID`。
 - 如果无法确认任务第一执行者，或第一执行者不是自己，跳过该任务，不读取详情、不留言、不修改，避免与他人争抢。
+- 读取 bug 清单或上下文时，截图是判断 bug 原因的重要证据，不能只看文字。`context/get` 返回 `imageAnalysisRequired=true`、`mediaResources.images` 非空或 `imagePlaceholders>0` 时，必须识别图片内容后再判断。
+- 对可访问截图，先运行 `download-images --task-id <taskId>` 下载，再用可用的视觉工具查看本地图片内容，并把截图里看到的页面、报错、异常状态纳入 bug 判断；如果 Teambition 只返回 `[图片]` 占位但没有可访问 URL，要留言请用户补充可访问截图或把截图中的关键信息转成文字。
 - 单个 bug 需求不明确时，必须先问清楚“如何复现”，再用 `ask`、`comment` 或 `quick-reply --template need-info` 留言追问；至少追问页面入口、具体操作步骤、账号/数据/环境、期望结果、实际结果或报错，不要猜测修改，也不要一直等待这个任务；把它记为“待回复”，继续处理下一个明确任务。
 - 每完成一个明确任务后，从队列开头重新检查之前“待回复”的任务：读取 `activities/comments/context` 判断是否有新回复；如果需求已明确再开始修改，否则可以继续追问并处理后续任务。
 - 可以多次留言追问来澄清如何复现、期望结果、实际结果、环境信息、账号/权限、截图或验收标准；复现方式不清楚或需求明确前千万不要乱改。
@@ -89,7 +94,7 @@ python scripts/teambition_bug.py update-status --task-id "<taskId>" --status-nam
 - 进入处理状态时优先匹配“修改中”，如果没有，选择“修复中”“处理中”“进行中”“开发中”“已认领”“已领取”“已接收”等可表示正在处理的近义状态；不要把“待验收”“已完成”“关闭”等终态当作处理中。
 - 官方公开文档未提供单独“回复某条评论”的任务接口；`reply` 会引用动态/评论 ID 并创建一条新的任务评论。
 - 疑问 bug 优先留言追问，不擅自推进状态；疑问通常包括不知道如何复现、缺少具体步骤、期望结果、实际结果、环境信息或截图无法访问。
-- 图片和附件默认只提取链接和元信息，不批量下载。
+- 回复必须简单明了，默认写给策划、测试、运营等非技术人员看：先说结论或当前状态，再说需要对方补充什么；少用技术术语，不贴长日志，不展开实现细节。必须提技术原因时，用一句业务化解释。
 - 删除、批量替换、移动到不可逆状态等破坏性操作必须获得用户明确授权。
 - 个人 token 失效或权限不足时，让用户重新登录 Teambition 后刷新 token，或确认该账号是否已加入对应企业和项目。
 
