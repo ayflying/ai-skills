@@ -33,6 +33,7 @@ WRITE_COMMANDS = {
     "quick-reply",
     "ask",
     "start",
+    "finish",
     "update-status",
     "update-title",
     "update-note",
@@ -822,6 +823,41 @@ INACTIVE_STATUS_KEYWORDS = (
     "搁置",
     "挂起",
 )
+REVIEW_STATUS_KEYWORDS = (
+    "待验收",
+    "待验证",
+    "待测试",
+    "待确认",
+    "待审核",
+    "待检查",
+    "验收中",
+    "验证中",
+    "测试中",
+    "提测",
+    "验收",
+    "验证",
+    "测试",
+    "确认",
+    "审核",
+)
+TERMINAL_STATUS_KEYWORDS = (
+    "已完成",
+    "完成",
+    "关闭",
+    "已关闭",
+    "解决",
+    "已解决",
+    "已验收",
+    "验收通过",
+    "验证通过",
+    "测试通过",
+    "发布",
+    "上线",
+    "取消",
+    "归档",
+    "搁置",
+    "挂起",
+)
 
 
 def is_active_status_request(status_name: str | None) -> bool:
@@ -830,10 +866,25 @@ def is_active_status_request(status_name: str | None) -> bool:
     return any(keyword in status_name for keyword in ACTIVE_STATUS_KEYWORDS)
 
 
+def is_review_status_request(status_name: str | None) -> bool:
+    if not status_name:
+        return False
+    return any(keyword in status_name for keyword in REVIEW_STATUS_KEYWORDS)
+
+
 def active_status_score(name: str) -> tuple[int, int]:
     if any(keyword in name for keyword in INACTIVE_STATUS_KEYWORDS):
         return (0, 0)
     matches = [index for index, keyword in enumerate(ACTIVE_STATUS_KEYWORDS) if keyword in name]
+    if not matches:
+        return (0, 0)
+    return (1, -min(matches))
+
+
+def review_status_score(name: str) -> tuple[int, int]:
+    if any(keyword in name for keyword in TERMINAL_STATUS_KEYWORDS):
+        return (0, 0)
+    matches = [index for index, keyword in enumerate(REVIEW_STATUS_KEYWORDS) if keyword in name]
     if not matches:
         return (0, 0)
     return (1, -min(matches))
@@ -863,11 +914,28 @@ def pick_status(statuses: Any, status_name: str | None, status_id: str | None) -
         )
         if scored and scored[0][0][0] > 0:
             return scored[0][1]
+    if is_review_status_request(status_name):
+        scored = sorted(
+            (
+                (review_status_score(str(item.get("name") or "")), item)
+                for item in items
+                if item.get("name")
+            ),
+            key=lambda pair: pair[0],
+            reverse=True,
+        )
+        if scored and scored[0][0][0] > 0:
+            return scored[0][1]
     candidates = [item.get("name") for item in items if item.get("name")]
     if is_active_status_request(status_name):
         raise ApiError(
             f"没有找到表示正在处理的近义状态: {status_name}。可用状态: {', '.join(candidates)}。"
             "请先确认该产品工作流中哪个状态表示已认领/修复中/处理中。"
+        )
+    if is_review_status_request(status_name):
+        raise ApiError(
+            f"没有找到表示待验收的近义状态: {status_name}。可用状态: {', '.join(candidates)}。"
+            "请先确认该产品工作流中哪个状态表示待验收/待测试/待确认。"
         )
     raise ApiError(f"没有找到状态名称: {status_name}。可用状态: {', '.join(candidates)}")
 
@@ -906,6 +974,12 @@ def cmd_update_status(args: argparse.Namespace) -> None:
         json_body={k: v for k, v in body.items() if v is not None},
     )
     print_json(result)
+
+
+def cmd_finish(args: argparse.Namespace) -> None:
+    if not args.note:
+        args.note = "已处理完成，请验收。"
+    cmd_update_status(args)
 
 
 def cmd_update_title(args: argparse.Namespace) -> None:
@@ -1104,6 +1178,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--note")
     p.add_argument("--yes", action="store_true")
     p.set_defaults(func=cmd_update_status)
+
+    p = sub.add_parser("finish", help="修复并验证完成后推进到待验收或近义状态")
+    p.add_argument("--task-id", required=True)
+    p.add_argument("--status-name", default="待验收", help="优先精确匹配；找不到时匹配待测试/待确认/待审核等近义状态")
+    p.add_argument("--status-id")
+    p.add_argument("--note")
+    p.add_argument("--yes", action="store_true")
+    p.set_defaults(func=cmd_finish)
 
     p = sub.add_parser("update-title", help="更新任务标题")
     p.add_argument("--task-id", required=True)

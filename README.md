@@ -17,7 +17,7 @@
 | [gpt-image](skills/gpt-image/SKILL.md) | OpenAI GPT Image 系列画图与图片编辑 | `skills/gpt-image/` |
 | [ollama](skills/ollama/SKILL.md) | 调用 Ollama 本地模型 (qwen3.5:9b) | `skills/ollama/` |
 | [gitea-weekly-report](skills/gitea-weekly-report/SKILL.md) | 生成一个或多个 Gitea 组织的周报，遍历全部分支并转换技术提交为业务功能点 | `skills/gitea-weekly-report/` |
-| [teambition-bug](skills/teambition-bug/SKILL.md) | 通过 Teambition 官方 OpenAPI 读取、留言和推进 bug/缺陷任务 | `skills/teambition-bug/` |
+| [teambition-bug](skills/teambition-bug/SKILL.md) | 通过 Teambition 官方 OpenAPI 读取、留言、识别截图并推进 bug 到修改中/待验收 | `skills/teambition-bug/` |
 
 ## 使用方式
 
