@@ -407,6 +407,60 @@ def list_statuses(client: TeambitionClient, task_id: str) -> Any:
     return client.request("GET", f"/v3/task/{task_id}/tfs")
 
 
+ACTIVE_STATUS_KEYWORDS = (
+    "修改中",
+    "修复中",
+    "处理中",
+    "进行中",
+    "开发中",
+    "已认领",
+    "已领取",
+    "已接收",
+    "已开始",
+    "排查中",
+    "定位中",
+    "修改",
+    "修复",
+    "处理",
+    "认领",
+    "领取",
+    "接收",
+    "开始",
+    "进行",
+    "开发",
+    "排查",
+    "定位",
+)
+INACTIVE_STATUS_KEYWORDS = (
+    "完成",
+    "关闭",
+    "解决",
+    "验收",
+    "测试",
+    "发布",
+    "上线",
+    "取消",
+    "归档",
+    "搁置",
+    "挂起",
+)
+
+
+def is_active_status_request(status_name: str | None) -> bool:
+    if not status_name:
+        return False
+    return any(keyword in status_name for keyword in ACTIVE_STATUS_KEYWORDS)
+
+
+def active_status_score(name: str) -> tuple[int, int]:
+    if any(keyword in name for keyword in INACTIVE_STATUS_KEYWORDS):
+        return (0, 0)
+    matches = [index for index, keyword in enumerate(ACTIVE_STATUS_KEYWORDS) if keyword in name]
+    if not matches:
+        return (0, 0)
+    return (1, -min(matches))
+
+
 def pick_status(statuses: Any, status_name: str | None, status_id: str | None) -> dict[str, Any]:
     items = statuses if isinstance(statuses, list) else statuses.get("result", []) if isinstance(statuses, dict) else []
     if status_id:
@@ -419,7 +473,24 @@ def pick_status(statuses: Any, status_name: str | None, status_id: str | None) -
     for item in items:
         if str(item.get("name", "")).strip() == status_name:
             return item
+    if is_active_status_request(status_name):
+        scored = sorted(
+            (
+                (active_status_score(str(item.get("name") or "")), item)
+                for item in items
+                if item.get("name")
+            ),
+            key=lambda pair: pair[0],
+            reverse=True,
+        )
+        if scored and scored[0][0][0] > 0:
+            return scored[0][1]
     candidates = [item.get("name") for item in items if item.get("name")]
+    if is_active_status_request(status_name):
+        raise ApiError(
+            f"没有找到表示正在处理的近义状态: {status_name}。可用状态: {', '.join(candidates)}。"
+            "请先确认该产品工作流中哪个状态表示已认领/修复中/处理中。"
+        )
     raise ApiError(f"没有找到状态名称: {status_name}。可用状态: {', '.join(candidates)}")
 
 
@@ -629,7 +700,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("start", help="将任务推进到指定状态，默认修改中")
     p.add_argument("--task-id", required=True)
-    p.add_argument("--status-name", default="修改中")
+    p.add_argument("--status-name", default="修改中", help="优先精确匹配；找不到时匹配修复中/处理中/已认领等近义状态")
     p.add_argument("--status-id")
     p.add_argument("--note")
     p.add_argument("--yes", action="store_true")

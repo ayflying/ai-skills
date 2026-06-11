@@ -45,8 +45,10 @@ python scripts/teambition_bug.py list-status --task-id "<taskId>"
 python scripts/teambition_bug.py start --task-id "<taskId>" --status-name "修改中" --yes
 ```
 
-如果工作流没有“修改中”，先用 `list-status` 查看可用状态，再用 `update-status --status-name "<状态名>" --yes` 更新，或只用 `comment/quick-reply` 留言同步进展。
+如果工作流没有“修改中”，先用 `list-status` 查看可用状态/标签状态，再用 `update-status --status-name "<状态名>" --yes` 更新，或只用 `comment/quick-reply` 留言同步进展。
 
 如果运行 `search`、`list-bug-groups` 或 `create-bug-group` 时没有 `projectId`，先让用户发产品/项目分享链接，再执行 `parse-url --url "<链接>"` 获取。
+
+批量处理 bug 时按紧急程度从高到低推进。遇到需求不明确的任务，先留言追问并继续下一个任务；完成后再回头检查已追问任务是否有新回复。开始处理时优先把状态/标签状态改为“修改中”，没有则匹配“修复中、处理中、进行中、已认领、已领取”等表示正在处理的状态。
 
 更多说明见 `SKILL.md`。

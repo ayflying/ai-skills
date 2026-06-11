@@ -2,7 +2,7 @@
 name: teambition-bug
 description: |
   Teambition Bug 管理技能，使用个人账号 userToken 直接调用官方 OpenAPI 读取、分析、留言和推进项目缺陷任务，不依赖 teambition_cli 或 MCP。
-  Use when: (1) 需要读取 Teambition bug/缺陷任务详情、备注、图片附件和留言动态 (2) 需要对疑问信息自动留言追问 (3) 需要修改任务状态为修改中或更新标题、备注、执行人、优先级、截止时间 (4) 需要查询或创建缺陷分类
+  Use when: (1) 需要读取 Teambition bug/缺陷任务详情、备注、图片附件和留言动态 (2) 需要按紧急程度排队处理 bug (3) 需要对疑问信息自动留言追问并继续处理后续任务 (4) 需要修改任务状态为修改中、修复中、已认领等正在处理语义状态，或更新标题、备注、执行人、优先级、截止时间 (5) 需要查询或创建缺陷分类
 ---
 
 # Teambition Bug 管理
@@ -66,7 +66,7 @@ python scripts/teambition_bug.py reply --task-id "<taskId>" --reply-to "<activit
 # 使用常用模板回复
 python scripts/teambition_bug.py quick-reply --task-id "<taskId>" --template need-info
 
-# 将任务状态改为“修改中”
+# 将任务状态/标签状态改为“修改中”
 python scripts/teambition_bug.py start --task-id "<taskId>" --status-name "修改中" --yes
 
 # 或按当前工作流已有状态更新，例如待验收
@@ -78,8 +78,12 @@ python scripts/teambition_bug.py update-status --task-id "<taskId>" --status-nam
 - 修改状态、执行人、优先级、截止时间或留言前，先读取任务详情确认目标任务。
 - 用户只给产品/项目链接时，先用 `parse-url` 解析 `projectId`，后续项目级命令都显式传 `--project-id <projectId>`；`tasks/view/<id>` 是视图 ID，不当作任务 ID。
 - 如果项目级命令缺少 `--project-id`，引导用户复制 Teambition 产品/项目分享链接给 AI，让 AI 从链接里的 `/project/<id>` 提取产品 ID 后重试。
-- “修改中”不是固定 ID，必须先调用状态列表并按名称匹配。
-- 如果当前工作流没有“修改中”，先向用户说明可用状态，再选择最接近的状态或只留言同步进展。
+- 任务列表必须按紧急程度从高到低处理；优先看任务 `priority`、优先级名称、截止时间、标题/备注中的紧急关键词，再决定顺序。
+- 单个任务需求不明确时，先用 `ask`、`comment` 或 `quick-reply --template need-info` 留言追问，不要猜测修改，也不要一直等待这个任务；把它记为“待回复”，继续处理下一个明确任务。
+- 每完成一个明确任务后，从队列开头重新检查之前“待回复”的任务：读取 `activities/comments/context` 判断是否有新回复；如果需求已明确再开始修改，否则可以继续追问并处理后续任务。
+- 可以多次留言追问来澄清复现步骤、期望结果、实际结果、环境信息、账号/权限、截图或验收标准；需求明确前千万不要乱改。
+- “修改中”不是固定 ID，必须先调用状态列表并按名称或语义匹配；这里的状态包含产品工作流里的状态/标签状态。
+- 进入处理状态时优先匹配“修改中”，如果没有，选择“修复中”“处理中”“进行中”“开发中”“已认领”“已领取”“已接收”等可表示正在处理的近义状态；不要把“待验收”“已完成”“关闭”等终态当作处理中。
 - 官方公开文档未提供单独“回复某条评论”的任务接口；`reply` 会引用动态/评论 ID 并创建一条新的任务评论。
 - 疑问 bug 优先留言追问，不擅自推进状态；疑问通常包括缺少复现步骤、期望结果、实际结果、环境信息或截图无法访问。
 - 图片和附件默认只提取链接和元信息，不批量下载。
