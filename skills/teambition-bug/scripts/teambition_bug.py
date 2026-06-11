@@ -105,6 +105,16 @@ def confirm_or_exit(message: str, yes: bool = False) -> None:
         raise SystemExit("已取消操作。")
 
 
+def require_project_id(value: str | None) -> str:
+    if value:
+        return value
+    raise ConfigError(
+        "缺少产品/项目 ID。请让用户复制 Teambition 产品/项目分享链接给 AI，"
+        "由 AI 执行 parse-url 从链接里的 /project/<id> 提取 projectId，"
+        "再用 --project-id <projectId> 重试。"
+    )
+
+
 class TeambitionClient:
     def __init__(self) -> None:
         if requests is None:
@@ -217,9 +227,10 @@ def cmd_parse_url(args: argparse.Namespace) -> None:
 
 def cmd_search(args: argparse.Namespace) -> None:
     client = TeambitionClient()
+    project_id = require_project_id(args.project_id)
     result = client.request(
         "GET",
-        f"/v3/project/{args.project_id}/task/query",
+        f"/v3/project/{project_id}/task/query",
         params={
             "q": args.tql,
             "includeArchived": str(args.include_archived).lower(),
@@ -507,10 +518,11 @@ def cmd_update_due_date(args: argparse.Namespace) -> None:
 
 def cmd_list_bug_groups(args: argparse.Namespace) -> None:
     client = TeambitionClient()
+    project_id = require_project_id(args.project_id)
     print_json(
         client.request(
             "GET",
-            f"/v3/project/{args.project_id}/bug/commongroup",
+            f"/v3/project/{project_id}/bug/commongroup",
             params={"pageSize": args.page_size, "pageToken": args.page_token},
         )
     )
@@ -518,12 +530,13 @@ def cmd_list_bug_groups(args: argparse.Namespace) -> None:
 
 def cmd_create_bug_group(args: argparse.Namespace) -> None:
     client = TeambitionClient()
-    confirm_or_exit(f"将在项目 {args.project_id} 创建缺陷分类 {args.name}。", args.yes)
+    project_id = require_project_id(args.project_id)
+    confirm_or_exit(f"将在项目 {project_id} 创建缺陷分类 {args.name}。", args.yes)
     body = {"name": args.name, "parentId": args.parent_id, "description": args.description}
     print_json(
         client.request(
             "POST",
-            f"/v3/project/{args.project_id}/bug/commongroup/create",
+            f"/v3/project/{project_id}/bug/commongroup/create",
             json_body={k: v for k, v in body.items() if v is not None},
         )
     )
@@ -538,7 +551,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_parse_url)
 
     p = sub.add_parser("search", help="查询项目任务")
-    p.add_argument("--project-id", required=True)
+    p.add_argument("--project-id", help="项目/产品 ID，可从 Teambition 项目链接解析")
     p.add_argument("--tql", default="")
     p.add_argument("--page-size", type=int, default=10)
     p.add_argument("--page-token")
@@ -666,13 +679,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_update_due_date)
 
     p = sub.add_parser("list-bug-groups", help="查询缺陷分类")
-    p.add_argument("--project-id", required=True)
+    p.add_argument("--project-id", help="项目/产品 ID，可从 Teambition 项目链接解析")
     p.add_argument("--page-size", type=int, default=50)
     p.add_argument("--page-token")
     p.set_defaults(func=cmd_list_bug_groups)
 
     p = sub.add_parser("create-bug-group", help="创建缺陷分类")
-    p.add_argument("--project-id", required=True)
+    p.add_argument("--project-id", help="项目/产品 ID，可从 Teambition 项目链接解析")
     p.add_argument("--name", required=True)
     p.add_argument("--parent-id")
     p.add_argument("--description")

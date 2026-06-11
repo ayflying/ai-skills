@@ -35,11 +35,9 @@ cp .env.example .env
 - `TEAMBITION_TENANT_ID`: 企业 ID，对应请求头 `X-Tenant-Id`。
 - `TEAMBITION_USER_TOKEN`: 个人账号 token，权限与当前 Teambition 登录账号一致。
 
-真实 token 只能放在本地 `.env` 或当前 Shell 环境变量中，不能写入仓库文件。其他设备安装技能后，只要复制 `.env.example`、填入自己的 `TEAMBITION_USER_TOKEN` 和 `TEAMBITION_TENANT_ID`，即可按该账号的项目权限使用。
+真实 token 只能放在本地 `.env` 或当前 Shell 环境变量中，不能写入仓库文件。其他设备安装技能后，只要复制 `.env.example`、填入自己的 `TEAMBITION_USER_TOKEN` 和 `TEAMBITION_TENANT_ID`，即可按该账号的企业权限使用。
 
-脚本默认使用 `https://open.teambition.com/api`，通常不需要配置网关地址。只有使用代理或私有网关时，才临时设置 `TEAMBITION_GATEWAY` 覆盖默认值。
-
-企业 ID 可从企业链接 `/organization/<id>/my` 中取得。项目链接 `/project/<id>/...` 只能提供项目 ID，不能替代企业 ID。
+企业 ID 可从企业链接 `/organization/<id>/my` 中取得。产品/项目 ID 不写入全局环境变量；不同对话处理不同产品时，从用户在当前对话提供的 Teambition 产品/项目分享链接中解析。脚本默认使用 `https://open.teambition.com/api`，通常不需要配置网关地址。
 
 ## 常用命令
 
@@ -78,7 +76,8 @@ python scripts/teambition_bug.py update-status --task-id "<taskId>" --status-nam
 ## 操作规则
 
 - 修改状态、执行人、优先级、截止时间或留言前，先读取任务详情确认目标任务。
-- 用户只给项目链接时，先解析 `projectId`，再用 `search` 查候选任务；`tasks/view/<id>` 是视图 ID，不当作任务 ID。
+- 用户只给产品/项目链接时，先用 `parse-url` 解析 `projectId`，后续项目级命令都显式传 `--project-id <projectId>`；`tasks/view/<id>` 是视图 ID，不当作任务 ID。
+- 如果项目级命令缺少 `--project-id`，引导用户复制 Teambition 产品/项目分享链接给 AI，让 AI 从链接里的 `/project/<id>` 提取产品 ID 后重试。
 - “修改中”不是固定 ID，必须先调用状态列表并按名称匹配。
 - 如果当前工作流没有“修改中”，先向用户说明可用状态，再选择最接近的状态或只留言同步进展。
 - 官方公开文档未提供单独“回复某条评论”的任务接口；`reply` 会引用动态/评论 ID 并创建一条新的任务评论。

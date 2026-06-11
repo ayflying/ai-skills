@@ -8,6 +8,8 @@
 - `X-Tenant-Id: <企业 ID>`
 - `X-Tenant-Type: organization`
 
+项目级接口的 `{projectId}` 来自当前对话提供的产品/项目分享链接，使用命令时显式传 `--project-id`。如果缺少产品 ID，先让用户复制分享链接给 AI，再用 `parse-url` 从 `/project/<id>` 提取。
+
 ## 任务查询与上下文
 
 | 能力 | 方法和路径 | 说明 |
