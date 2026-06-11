@@ -111,6 +111,7 @@ def parse_teambition_url(url: str) -> dict[str, str]:
 
 
 def print_json(data: Any) -> None:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     print(json.dumps(data, ensure_ascii=False, indent=2))
 
 
@@ -343,6 +344,138 @@ def safe_download_name(url: str, index: int, content_type: str | None = None) ->
     return f"image-{index:02d}{suffix}"
 
 
+def parse_json_maybe(value: Any) -> Any:
+    current = value
+    for _ in range(3):
+        if not isinstance(current, str):
+            return current
+        stripped = current.strip()
+        if not stripped or stripped[0] not in "{[\"":
+            return current
+        try:
+            current = json.loads(stripped)
+        except ValueError:
+            return current
+    return current
+
+
+def rtf_field_ids(task: dict[str, Any], traces: Any = None, *, include_custom_fields: bool = True) -> list[str]:
+    task_id = str(task.get("id") or task.get("taskId") or "")
+    if not task_id:
+        return []
+
+    fields: list[str] = []
+    if task.get("note"):
+        fields.append(f"{task_id}:note")
+
+    trace_items = traces if isinstance(traces, list) else traces.get("result", []) if isinstance(traces, dict) else []
+    for item in trace_items:
+        if isinstance(item, dict):
+            trace_id = item.get("id") or item.get("_id") or item.get("traceId")
+            if trace_id:
+                fields.append(f"{task_id}:trace:{trace_id}")
+
+    if include_custom_fields:
+        custom_fields = task.get("customfields") or task.get("customFields")
+        if isinstance(custom_fields, dict):
+            for cf_id, value in custom_fields.items():
+                if re.fullmatch(r"[0-9a-fA-F]{24}", str(cf_id)) and value not in (None, "", [], {}):
+                    fields.append(f"{task_id}:cf:{cf_id}")
+
+    return fields[:50]
+
+
+def parse_rtf_value_token(value: Any) -> dict[str, Any]:
+    parsed = parse_json_maybe(value)
+    if not isinstance(parsed, dict):
+        return {}
+
+    attachments = parsed.get("attachments")
+    if not isinstance(attachments, dict):
+        attachment_json = parse_json_maybe(parsed.get("attachmentJson"))
+        if isinstance(attachment_json, dict):
+            attachments = attachment_json
+    if isinstance(attachments, dict):
+        parsed["attachments"] = attachments
+    return parsed
+
+
+def extract_rtf_resources(rendered: Any) -> dict[str, Any]:
+    items = rendered if isinstance(rendered, list) else rendered.get("result", []) if isinstance(rendered, dict) else []
+    resources = {"images": [], "attachments": [], "links": []}
+    fields: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        field = str(item.get("rtfField") or "")
+        if field:
+            fields.append(field)
+        token = parse_rtf_value_token(item.get("rtfValueToken"))
+        attachments = token.get("attachments") if isinstance(token, dict) else None
+        if isinstance(attachments, dict):
+            for name, url in attachments.items():
+                if isinstance(url, str):
+                    add_media_url(resources, url, str(name))
+        extracted = extract_media_resources({"html": item.get("html"), "rtfValueToken": token})
+        resources = merge_media_resources(resources, extracted)
+    return {"rtfFields": sorted(set(fields)), "resources": merge_media_resources(resources)}
+
+
+def render_rich_text_fields(
+    client: TeambitionClient,
+    fields: list[str],
+    *,
+    html_expire_seconds: int = 3600,
+) -> list[dict[str, Any]]:
+    if not fields:
+        return []
+    result = client.request(
+        "GET",
+        "/v3/task/rtf/render",
+        params={"rtfFields": ",".join(fields[:50]), "htmlExpireSeconds": html_expire_seconds},
+    )
+    return result if isinstance(result, list) else result.get("result", []) if isinstance(result, dict) else []
+
+
+def render_task_rich_text(client: TeambitionClient, task: dict[str, Any], traces: Any = None) -> dict[str, Any]:
+    fields = rtf_field_ids(task, traces)
+    if not fields:
+        return {"rtfFields": [], "items": [], "resources": {"images": [], "attachments": [], "links": []}}
+    try:
+        items = render_rich_text_fields(client, fields)
+    except ApiError as exc:
+        fallback_fields = [field for field in fields if ":cf:" not in field]
+        if not fallback_fields or fallback_fields == fields:
+            return {"rtfFields": fields, "items": [], "resources": {"images": [], "attachments": [], "links": []}, "error": str(exc)}
+        try:
+            items = render_rich_text_fields(client, fallback_fields)
+            fields = fallback_fields
+        except ApiError as fallback_exc:
+            return {
+                "rtfFields": fields,
+                "items": [],
+                "resources": {"images": [], "attachments": [], "links": []},
+                "error": str(fallback_exc),
+            }
+    extracted = extract_rtf_resources(items)
+    compact_items = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        token = parse_rtf_value_token(item.get("rtfValueToken"))
+        compact_items.append(
+            {
+                "taskId": item.get("taskId"),
+                "rtfField": item.get("rtfField"),
+                "htmlText": BeautifulSoup(item.get("html") or "", "html.parser").get_text("\n", strip=True)
+                if BeautifulSoup is not None
+                else "",
+                "attachments": token.get("attachments", {}) if isinstance(token, dict) else {},
+            }
+        )
+    return {"rtfFields": fields, "items": compact_items, "resources": extracted["resources"]}
+
+
 def summarize_task(task: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": task.get("id") or task.get("taskId"),
@@ -408,11 +541,21 @@ def cmd_get(args: argparse.Namespace) -> None:
     client = TeambitionClient()
     task = get_task(client, args.task_id)
     output: dict[str, Any] = {"task": summarize_task(task), "rawTask": task if args.raw else None}
+    activities = None
     if args.with_activities:
-        output["activities"] = list_activities(client, args.task_id, page_size=args.page_size)
+        activities = list_activities(client, args.task_id, page_size=args.page_size)
+        output["activities"] = activities
     if args.with_rich_text:
-        output["richTextLinks"] = extract_links_from_html(task.get("note") or "")
-    output["mediaResources"] = extract_media_resources(task)
+        traces = None
+        try:
+            traces = client.request("GET", f"/v3/task/{args.task_id}/traces")
+        except ApiError:
+            traces = None
+        output["richTextRender"] = render_task_rich_text(client, task, traces)
+    output["mediaResources"] = merge_media_resources(
+        extract_media_resources(task),
+        output.get("richTextRender", {}).get("resources", {}) if isinstance(output.get("richTextRender"), dict) else {},
+    )
     output["imagePlaceholders"] = count_image_placeholders(task)
     output["imageAnalysisRequired"] = bool(output["mediaResources"]["images"] or output["imagePlaceholders"])
     if output.get("rawTask") is None:
@@ -475,11 +618,13 @@ def cmd_context(args: argparse.Namespace) -> None:
         for key in rich_text:
             rich_text[key].extend(extracted[key])
     rich_text = {key: sorted(set(value)) for key, value in rich_text.items()}
+    rich_text_render = render_task_rich_text(client, task, traces)
     media_resources = merge_media_resources(
         rich_text,
         extract_media_resources(task),
         extract_media_resources(activities),
         extract_media_resources(traces),
+        rich_text_render.get("resources", {}),
     )
     image_placeholders = count_image_placeholders(task) + count_image_placeholders(activities) + count_image_placeholders(traces)
 
@@ -489,6 +634,7 @@ def cmd_context(args: argparse.Namespace) -> None:
             "activities": activities,
             "traces": traces,
             "richTextLinks": rich_text,
+            "richTextRender": rich_text_render,
             "mediaResources": media_resources,
             "imagePlaceholders": image_placeholders,
             "imageAnalysisRequired": bool(media_resources["images"] or image_placeholders),
@@ -524,9 +670,19 @@ def cmd_render_rich_text(args: argparse.Namespace) -> None:
         rtf_fields = Path(args.rtf_fields_file).read_text(encoding="utf-8")
     else:
         rtf_fields = args.rtf_fields
-    result = client.request("GET", "/v3/task/rtf/render", params={"rtfFields": rtf_fields})
+    result = client.request(
+        "GET",
+        "/v3/task/rtf/render",
+        params={"rtfFields": rtf_fields, "htmlExpireSeconds": args.html_expire_seconds},
+    )
     rendered = json.dumps(result, ensure_ascii=False)
-    print_json({"result": result, "links": extract_links_from_html(html.unescape(rendered))})
+    print_json(
+        {
+            "result": result,
+            "links": extract_links_from_html(html.unescape(rendered)),
+            "rtfResources": extract_rtf_resources(result),
+        }
+    )
 
 
 def cmd_download_images(args: argparse.Namespace) -> None:
@@ -537,10 +693,12 @@ def cmd_download_images(args: argparse.Namespace) -> None:
         traces = client.request("GET", f"/v3/task/{args.task_id}/traces")
     except ApiError:
         traces = []
+    rich_text_render = render_task_rich_text(client, task, traces)
     resources = merge_media_resources(
         extract_media_resources(task),
         extract_media_resources(activities),
         extract_media_resources(traces),
+        rich_text_render.get("resources", {}),
     )
     image_urls = resources["images"]
     output_dir = Path(args.output_dir or ROOT / "outputs" / "teambition-images" / args.task_id)
@@ -548,13 +706,18 @@ def cmd_download_images(args: argparse.Namespace) -> None:
 
     downloaded = []
     for index, url in enumerate(image_urls, start=1):
-        response = requests.get(url, headers=client.headers(), timeout=30)
+        response = requests.get(url, timeout=(5, 30), stream=True)
         if response.status_code >= 400:
-            downloaded.append({"url": url, "error": f"HTTP {response.status_code}"})
+            downloaded.append({"url": url, "error": f"HTTP {response.status_code}", "body": response.text[:300]})
             continue
         file_path = output_dir / safe_download_name(url, index, response.headers.get("Content-Type"))
-        file_path.write_bytes(response.content)
-        downloaded.append({"url": url, "path": str(file_path), "bytes": len(response.content)})
+        total = 0
+        with file_path.open("wb") as handle:
+            for chunk in response.iter_content(chunk_size=1024 * 256):
+                if chunk:
+                    handle.write(chunk)
+                    total += len(chunk)
+        downloaded.append({"url": url, "path": str(file_path), "bytes": total})
 
     placeholders = count_image_placeholders(task) + count_image_placeholders(activities) + count_image_placeholders(traces)
     print_json(
@@ -562,8 +725,9 @@ def cmd_download_images(args: argparse.Namespace) -> None:
             "task": summarize_task(task),
             "outputDir": str(output_dir),
             "downloaded": downloaded,
+            "richTextFields": rich_text_render.get("rtfFields", []),
             "imagePlaceholders": placeholders,
-            "note": "下载后必须查看图片内容再判断 bug；如果只有图片占位没有 URL，请留言要求补充可访问截图。",
+            "note": "下载后必须查看图片内容再判断 bug；如果富文本渲染后仍没有可访问 URL，请留言要求补充可访问截图。",
         }
     )
 
@@ -880,6 +1044,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("render-rich-text", help="渲染富文本并提取链接")
     p.add_argument("--rtf-fields")
     p.add_argument("--rtf-fields-file")
+    p.add_argument("--html-expire-seconds", type=int, default=3600)
     p.set_defaults(func=cmd_render_rich_text)
 
     p = sub.add_parser("download-images", help="下载任务上下文中的图片，供 AI 识别截图内容")

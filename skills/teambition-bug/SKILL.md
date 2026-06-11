@@ -49,11 +49,14 @@ python scripts/teambition_bug.py parse-url --url "https://www.teambition.com/pro
 # 按项目 TQL 查询任务
 python scripts/teambition_bug.py search --project-id "<projectId>" --tql "content CONTAIN \"登录\""
 
-# 读取 bug 完整上下文：标题、备注、动态、进展、富文本图片/附件链接
+# 读取 bug 完整上下文：标题、备注、动态、进展、富文本图片/附件真实下载链接
 python scripts/teambition_bug.py context --task-id "<taskId>"
 
 # 下载可访问截图，供 AI 识别图片内容
 python scripts/teambition_bug.py download-images --task-id "<taskId>"
+
+# 按官方富文本字段标识手动渲染，可用于排查图片/附件链接
+python scripts/teambition_bug.py render-rich-text --rtf-fields "<taskId>:note"
 
 # 只读取留言/动态记录
 python scripts/teambition_bug.py activities --task-id "<taskId>"
@@ -85,8 +88,9 @@ python scripts/teambition_bug.py update-status --task-id "<taskId>" --status-nam
 - 任务列表必须按紧急程度从高到低处理；优先看任务 `priority`、优先级名称、截止时间、标题/备注中的紧急关键词，再决定顺序。
 - 只读取和处理第一执行者为自己的任务。任务列表必须先按 `TEAMBITION_SELF_USER_ID` 过滤；单任务读取、留言、改状态或更新字段前，也必须确认第一执行者等于 `TEAMBITION_SELF_USER_ID`。
 - 如果无法确认任务第一执行者，或第一执行者不是自己，跳过该任务，不读取详情、不留言、不修改，避免与他人争抢。
-- 读取 bug 清单或上下文时，截图是判断 bug 原因的重要证据，不能只看文字。`context/get` 返回 `imageAnalysisRequired=true`、`mediaResources.images` 非空或 `imagePlaceholders>0` 时，必须识别图片内容后再判断。
-- 对可访问截图，先运行 `download-images --task-id <taskId>` 下载，再用可用的视觉工具查看本地图片内容，并把截图里看到的页面、报错、异常状态纳入 bug 判断；如果 Teambition 只返回 `[图片]` 占位但没有可访问 URL，要留言请用户补充可访问截图或把截图中的关键信息转成文字。
+- 读取 bug 清单或上下文时，截图是判断 bug 原因的重要证据，不能只看文字。`context/get --with-rich-text` 会按官方 `GET /v3/task/rtf/render` 自动渲染 `taskId:note`、`taskId:trace:<traceId>` 和可识别的 `taskId:cf:<cfId>`，从 `rtfValueToken.attachments` 提取真实图片/附件下载链接。
+- 对可访问截图，先运行 `download-images --task-id <taskId>` 下载，再用可用的视觉工具查看本地图片内容，并把截图里看到的页面、报错、异常状态纳入 bug 判断；OSS 图片直链不能带 OpenAPI 的 `Authorization` 头，脚本已自动区分 API 请求和图片下载。
+- 如果 `context` 仍然只有 `[图片]` 占位但没有 `mediaResources.images`，再留言请用户补充可访问截图或把截图中的关键信息转成文字。
 - 单个 bug 需求不明确时，必须先问清楚“如何复现”，再用 `ask`、`comment` 或 `quick-reply --template need-info` 留言追问；至少追问页面入口、具体操作步骤、账号/数据/环境、期望结果、实际结果或报错，不要猜测修改，也不要一直等待这个任务；把它记为“待回复”，继续处理下一个明确任务。
 - 每完成一个明确任务后，从队列开头重新检查之前“待回复”的任务：读取 `activities/comments/context` 判断是否有新回复；如果需求已明确再开始修改，否则可以继续追问并处理后续任务。
 - 可以多次留言追问来澄清如何复现、期望结果、实际结果、环境信息、账号/权限、截图或验收标准；复现方式不清楚或需求明确前千万不要乱改。

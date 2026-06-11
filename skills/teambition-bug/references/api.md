@@ -18,9 +18,19 @@
 | 查询项目任务 | `GET /v3/project/{projectId}/task/query` | query 支持 `q`、`includeArchived`、`pageToken`、`pageSize` |
 | 列出任务动态 | `GET /v3/task/{taskId}/activity/list` | query 支持 `pageSize`、`pageToken`、`actions`、`excludeActions`、`creatorIds`、`language`、`orderBy` |
 | 获取任务进展 | `GET /v3/task/{taskId}/traces` | 用于读取任务进展富文本 |
-| 富文本渲染 | `GET /v3/task/rtf/render` | 用 `rtfFields` 参数提取备注、自定义富文本字段、任务进展中的 HTML、图片和附件链接 |
+| 富文本渲染 | `GET /v3/task/rtf/render` | 用 `rtfFields` 参数提取备注、自定义富文本字段、任务进展中的 HTML、图片和附件真实下载链接 |
 
-脚本会额外递归扫描任务详情、动态和进展原始 JSON 中的 URL 字段，并用 `download-images` 下载可访问图片。Teambition 有时只返回 `[图片]` 占位且不暴露 URL，此时需要让用户补充可访问截图或截图文字。
+富文本图片不能只看 `task.note` 里的 `[图片]` 降级文本。官方流程是调用 `GET /v3/task/rtf/render`：
+
+- 任务备注：`<taskId>:note`
+- 任务进展：`<taskId>:trace:<traceId>`，`traceId` 来自 `GET /v3/task/{taskId}/traces`
+- 富文本自定义字段：`<taskId>:cf:<cfId>`，`cfId` 来自任务详情 `customfields`
+
+接口返回的每项包含 `html`、`rtfField`、`rtfValueToken` 和 `taskId`。`rtfValueToken` 是 JSON 字符串，其中 `attachments` 字段保存富文本中的图片和附件真实下载地址；这些地址有有效期，长度与 `htmlExpireSeconds` 参数一致。脚本会自动解析 `rtfValueToken.attachments`，并额外递归扫描任务详情、动态和进展原始 JSON 中的 URL 字段。
+
+下载 `rtfValueToken.attachments` 里的 OSS 签名直链时不要带 OpenAPI 的 `Authorization` 请求头；签名 URL 自身负责鉴权。`download-images` 已自动区分 OpenAPI 请求和图片直链下载。
+
+如果 `context` 仍然只有 `[图片]` 占位且 `mediaResources.images` 为空，再让用户补充可访问截图或截图文字。
 
 ## 留言和状态
 
@@ -58,5 +68,5 @@
 - 状态名称如“修改中”必须先查询当前任务所在工作流状态列表再匹配。
 - 不同产品的状态名称不同，进入处理时可匹配“修改中、修复中、处理中、进行中、已认领、已领取”等正在处理语义状态。
 - 任务读取和写入前必须校验第一执行者：常见字段是 `executorId`，多执行者字段则取列表第一个；只有等于 `TEAMBITION_SELF_USER_ID` 才继续。
-- 富文本资源接口需要根据任务详情、任务进展或自定义字段中的富文本 ID 拼接 `rtfFields`。
+- 富文本资源接口需要根据任务详情、任务进展或自定义字段中的富文本 ID 拼接 `rtfFields`；多个值用英文逗号分隔，最多 50 个。
 - 个人 token 过期或账号无项目权限时会返回鉴权或权限错误，需要用户重新获取 token 或确认项目成员权限。
