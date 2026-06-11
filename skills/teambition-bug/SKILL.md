@@ -34,8 +34,9 @@ cp .env.example .env
 
 - `TEAMBITION_TENANT_ID`: 企业 ID，对应请求头 `X-Tenant-Id`。
 - `TEAMBITION_USER_TOKEN`: 个人账号 token，权限与当前 Teambition 登录账号一致。
+- `TEAMBITION_SELF_USER_ID`: 当前 Teambition 账号用户 ID，用于只读取和处理第一执行者为自己的任务，避免多人争抢。
 
-真实 token 只能放在本地 `.env` 或当前 Shell 环境变量中，不能写入仓库文件。其他设备安装技能后，只要复制 `.env.example`、填入自己的 `TEAMBITION_USER_TOKEN` 和 `TEAMBITION_TENANT_ID`，即可按该账号的企业权限使用。
+真实 token 只能放在本地 `.env` 或当前 Shell 环境变量中，不能写入仓库文件。其他设备安装技能后，只要复制 `.env.example`、填入自己的 `TEAMBITION_USER_TOKEN`、`TEAMBITION_TENANT_ID` 和 `TEAMBITION_SELF_USER_ID`，即可按该账号的企业权限使用。
 
 企业 ID 可从企业链接 `/organization/<id>/my` 中取得。产品/项目 ID 不写入全局环境变量；不同对话处理不同产品时，从用户在当前对话提供的 Teambition 产品/项目分享链接中解析。脚本默认使用 `https://open.teambition.com/api`，通常不需要配置网关地址。
 
@@ -79,6 +80,8 @@ python scripts/teambition_bug.py update-status --task-id "<taskId>" --status-nam
 - 用户只给产品/项目链接时，先用 `parse-url` 解析 `projectId`，后续项目级命令都显式传 `--project-id <projectId>`；`tasks/view/<id>` 是视图 ID，不当作任务 ID。
 - 如果项目级命令缺少 `--project-id`，引导用户复制 Teambition 产品/项目分享链接给 AI，让 AI 从链接里的 `/project/<id>` 提取产品 ID 后重试。
 - 任务列表必须按紧急程度从高到低处理；优先看任务 `priority`、优先级名称、截止时间、标题/备注中的紧急关键词，再决定顺序。
+- 只读取和处理第一执行者为自己的任务。任务列表必须先按 `TEAMBITION_SELF_USER_ID` 过滤；单任务读取、留言、改状态或更新字段前，也必须确认第一执行者等于 `TEAMBITION_SELF_USER_ID`。
+- 如果无法确认任务第一执行者，或第一执行者不是自己，跳过该任务，不读取详情、不留言、不修改，避免与他人争抢。
 - 单个任务需求不明确时，先用 `ask`、`comment` 或 `quick-reply --template need-info` 留言追问，不要猜测修改，也不要一直等待这个任务；把它记为“待回复”，继续处理下一个明确任务。
 - 每完成一个明确任务后，从队列开头重新检查之前“待回复”的任务：读取 `activities/comments/context` 判断是否有新回复；如果需求已明确再开始修改，否则可以继续追问并处理后续任务。
 - 可以多次留言追问来澄清复现步骤、期望结果、实际结果、环境信息、账号/权限、截图或验收标准；需求明确前千万不要乱改。

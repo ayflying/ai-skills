@@ -94,6 +94,67 @@ def print_json(data: Any) -> None:
     print(json.dumps(data, ensure_ascii=False, indent=2))
 
 
+def first_executor_id(task: dict[str, Any]) -> str | None:
+    executor_id = task.get("executorId") or task.get("executor_id")
+    if executor_id:
+        return str(executor_id)
+
+    executor_ids = task.get("executorIds") or task.get("executor_ids")
+    if isinstance(executor_ids, list) and executor_ids:
+        return str(executor_ids[0])
+
+    executors = task.get("executors")
+    if isinstance(executors, list) and executors:
+        first = executors[0]
+        if isinstance(first, dict):
+            value = first.get("id") or first.get("userId") or first.get("_id")
+            return str(value) if value else None
+        return str(first)
+
+    executor = task.get("executor")
+    if isinstance(executor, dict):
+        value = executor.get("id") or executor.get("userId") or executor.get("_id")
+        return str(value) if value else None
+
+    return None
+
+
+def current_user_id() -> str:
+    return env("TEAMBITION_SELF_USER_ID", required=True) or ""
+
+
+def ensure_first_executor_is_self(task: dict[str, Any], *, action: str = "读取") -> None:
+    self_id = current_user_id()
+    executor_id = first_executor_id(task)
+    task_id = task.get("id") or task.get("taskId") or "<unknown>"
+    if not executor_id:
+        raise ApiError(f"无法确认任务 {task_id} 的第一执行者，为避免多人争抢，已停止{action}。")
+    if executor_id != self_id:
+        raise ApiError(
+            f"任务 {task_id} 的第一执行者是 {executor_id}，不是当前账号 {self_id}。"
+            f"为避免多人争抢，已跳过{action}。"
+        )
+
+
+def filter_first_executor_self(result: Any) -> Any:
+    self_id = current_user_id()
+
+    def keep(task: Any) -> bool:
+        return isinstance(task, dict) and first_executor_id(task) == self_id
+
+    if isinstance(result, list):
+        return [task for task in result if keep(task)]
+    if isinstance(result, dict) and isinstance(result.get("result"), list):
+        filtered = dict(result)
+        filtered["result"] = [task for task in result["result"] if keep(task)]
+        filtered["filteredByFirstExecutorId"] = self_id
+        filtered["filteredOutCount"] = len(result["result"]) - len(filtered["result"])
+        return filtered
+    if isinstance(result, dict):
+        ensure_first_executor_is_self(result)
+    return result
+
+
 def confirm_or_exit(message: str, yes: bool = False) -> None:
     if yes:
         return
@@ -198,6 +259,7 @@ def summarize_task(task: dict[str, Any]) -> dict[str, Any]:
         "projectId": task.get("projectId"),
         "statusId": task.get("tfsId") or task.get("taskflowstatusId"),
         "executorId": task.get("executorId"),
+        "firstExecutorId": first_executor_id(task),
         "priority": task.get("priority"),
         "dueDate": task.get("dueDate"),
         "url": f"https://www.teambition.com/task/{task.get('id') or task.get('taskId')}",
@@ -228,6 +290,7 @@ def cmd_parse_url(args: argparse.Namespace) -> None:
 def cmd_search(args: argparse.Namespace) -> None:
     client = TeambitionClient()
     project_id = require_project_id(args.project_id)
+    current_user_id()
     result = client.request(
         "GET",
         f"/v3/project/{project_id}/task/query",
@@ -238,12 +301,15 @@ def cmd_search(args: argparse.Namespace) -> None:
             "pageSize": args.page_size,
         },
     )
-    print_json(result)
+    print_json(filter_first_executor_self(result))
 
 
-def get_task(client: TeambitionClient, task_id: str) -> dict[str, Any]:
+def get_task(client: TeambitionClient, task_id: str, *, action: str = "读取") -> dict[str, Any]:
+    current_user_id()
     result = client.request("GET", "/v3/task/query", params={"taskId": task_id})
-    return first_task(result)
+    task = first_task(result)
+    ensure_first_executor_is_self(task, action=action)
+    return task
 
 
 def cmd_get(args: argparse.Namespace) -> None:
@@ -269,11 +335,13 @@ def list_activities(client: TeambitionClient, task_id: str, page_size: int = 50,
 
 def cmd_activities(args: argparse.Namespace) -> None:
     client = TeambitionClient()
+    get_task(client, args.task_id, action="读取动态")
     print_json(list_activities(client, args.task_id, page_size=args.page_size, actions=args.actions))
 
 
 def cmd_comments(args: argparse.Namespace) -> None:
     client = TeambitionClient()
+    get_task(client, args.task_id, action="读取评论")
     activities = list_activities(client, args.task_id, page_size=args.page_size)
     items = activities if isinstance(activities, list) else activities.get("result", []) if isinstance(activities, dict) else []
     comments = []
@@ -286,6 +354,7 @@ def cmd_comments(args: argparse.Namespace) -> None:
 
 def cmd_traces(args: argparse.Namespace) -> None:
     client = TeambitionClient()
+    get_task(client, args.task_id, action="读取进展")
     result = client.request("GET", f"/v3/task/{args.task_id}/traces")
     print_json(result)
 
@@ -357,6 +426,7 @@ def cmd_render_rich_text(args: argparse.Namespace) -> None:
 
 def cmd_comment(args: argparse.Namespace) -> None:
     client = TeambitionClient()
+    get_task(client, args.task_id, action="留言")
     confirm_or_exit(f"将向任务 {args.task_id} 留言。", args.yes)
     body: dict[str, Any] = {"content": args.content, "renderMode": args.render_mode}
     if args.mention_user_id:
@@ -496,12 +566,13 @@ def pick_status(statuses: Any, status_name: str | None, status_id: str | None) -
 
 def cmd_list_status(args: argparse.Namespace) -> None:
     client = TeambitionClient()
+    get_task(client, args.task_id, action="读取状态")
     print_json(list_statuses(client, args.task_id))
 
 
 def cmd_start(args: argparse.Namespace) -> None:
     client = TeambitionClient()
-    task = get_task(client, args.task_id)
+    task = get_task(client, args.task_id, action="更新状态")
     statuses = list_statuses(client, args.task_id)
     status = pick_status(statuses, args.status_name, args.status_id)
     confirm_or_exit(f"将任务《{task.get('content')}》状态改为 {status.get('name') or status.get('id')}。", args.yes)
@@ -516,7 +587,7 @@ def cmd_start(args: argparse.Namespace) -> None:
 
 def cmd_update_status(args: argparse.Namespace) -> None:
     client = TeambitionClient()
-    task = get_task(client, args.task_id)
+    task = get_task(client, args.task_id, action="更新状态")
     statuses = list_statuses(client, args.task_id)
     status = pick_status(statuses, args.status_name, args.status_id)
     confirm_or_exit(f"将任务《{task.get('content')}》状态改为 {status.get('name') or status.get('id')}。", args.yes)
@@ -531,12 +602,14 @@ def cmd_update_status(args: argparse.Namespace) -> None:
 
 def cmd_update_title(args: argparse.Namespace) -> None:
     client = TeambitionClient()
+    get_task(client, args.task_id, action="更新标题")
     confirm_or_exit(f"将更新任务 {args.task_id} 标题。", args.yes)
     print_json(client.request("PUT", f"/v3/task/{args.task_id}/content", json_body={"content": args.title}))
 
 
 def cmd_update_note(args: argparse.Namespace) -> None:
     client = TeambitionClient()
+    get_task(client, args.task_id, action="更新备注")
     confirm_or_exit(f"将更新任务 {args.task_id} 备注。", args.yes)
     print_json(
         client.request(
@@ -549,6 +622,7 @@ def cmd_update_note(args: argparse.Namespace) -> None:
 
 def cmd_update_executor(args: argparse.Namespace) -> None:
     client = TeambitionClient()
+    get_task(client, args.task_id, action="更新执行人")
     confirm_or_exit(f"将更新任务 {args.task_id} 执行人。", args.yes)
     print_json(
         client.request(
@@ -566,6 +640,7 @@ def cmd_list_priorities(args: argparse.Namespace) -> None:
 
 def cmd_update_priority(args: argparse.Namespace) -> None:
     client = TeambitionClient()
+    get_task(client, args.task_id, action="更新优先级")
     confirm_or_exit(f"将更新任务 {args.task_id} 优先级。", args.yes)
     value: dict[str, Any] = {}
     try:
@@ -577,6 +652,7 @@ def cmd_update_priority(args: argparse.Namespace) -> None:
 
 def cmd_update_due_date(args: argparse.Namespace) -> None:
     client = TeambitionClient()
+    get_task(client, args.task_id, action="更新截止时间")
     confirm_or_exit(f"将更新任务 {args.task_id} 截止时间。", args.yes)
     print_json(
         client.request(
