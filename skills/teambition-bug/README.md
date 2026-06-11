@@ -41,7 +41,7 @@ python scripts/teambition_bug.py search --project-id "<projectId>" --tql "conten
 python scripts/teambition_bug.py context --task-id "<taskId>"
 python scripts/teambition_bug.py comments --task-id "<taskId>"
 python scripts/teambition_bug.py reply --task-id "<taskId>" --reply-to "<activityId>" --content "我已开始排查。" --yes
-python scripts/teambition_bug.py ask --task-id "<taskId>" --question "请补充复现步骤、期望结果和实际结果。"
+python scripts/teambition_bug.py ask --task-id "<taskId>" --question "请先说明如何复现：页面入口、具体操作步骤、账号/数据/环境、期望结果和实际结果。"
 python scripts/teambition_bug.py quick-reply --task-id "<taskId>" --template need-info
 python scripts/teambition_bug.py list-status --task-id "<taskId>"
 python scripts/teambition_bug.py start --task-id "<taskId>" --status-name "修改中" --yes
@@ -51,6 +51,6 @@ python scripts/teambition_bug.py start --task-id "<taskId>" --status-name "修�
 
 如果运行 `search`、`list-bug-groups` 或 `create-bug-group` 时没有 `projectId`，先让用户发产品/项目分享链接，再执行 `parse-url --url "<链接>"` 获取。
 
-批量处理 bug 时先过滤第一执行者为自己的任务，再按紧急程度从高到低推进。遇到需求不明确的任务，先留言追问并继续下一个任务；完成后再回头检查已追问任务是否有新回复。开始处理时优先把状态/标签状态改为“修改中”，没有则匹配“修复中、处理中、进行中、已认领、已领取”等表示正在处理的状态。
+批量处理 bug 时先过滤第一执行者为自己的任务，再按紧急程度从高到低推进。遇到需求不明确的任务，必须先问清楚如何复现，包括页面入口、具体操作步骤、账号/数据/环境、期望结果和实际结果；留言追问后继续下一个任务，完成后再回头检查已追问任务是否有新回复。开始处理时优先把状态/标签状态改为“修改中”，没有则匹配“修复中、处理中、进行中、已认领、已领取”等表示正在处理的状态。
 
 更多说明见 `SKILL.md`。
