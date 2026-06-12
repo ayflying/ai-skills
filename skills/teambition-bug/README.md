@@ -36,6 +36,7 @@ TEAMBITION_TENANT_ID=your_organization_id
 
 ```bash
 python scripts/teambition_bug.py parse-url --url "https://www.teambition.com/project/6a292e9b13e121404ffea8c5/tasks/view/6a292e9b8e598fd9e0fb2515"
+python scripts/teambition_bug.py project --project-id "<projectId>"
 python scripts/teambition_bug.py search --project-id "<projectId>" --tql "content CONTAIN \"登录\""
 python scripts/teambition_bug.py context --task-id "<taskId>"
 python scripts/teambition_bug.py download-images --task-id "<taskId>"

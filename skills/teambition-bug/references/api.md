@@ -20,6 +20,7 @@
 
 | 能力 | 方法和路径 | 说明 |
 | --- | --- | --- |
+| 查询项目/产品详情 | `GET /v3/project/query` | query 支持 `projectIds`，用于校验项目 ID 是否可访问 |
 | 查询任务详情 | `GET /v3/task/query` | query 支持 `taskId`、`shortIds`、`parentTaskId` |
 | 查询项目任务 | `GET /v3/project/{projectId}/task/query` | query 支持 `q`、`includeArchived`、`pageToken`、`pageSize` |
 | 列出任务动态 | `GET /v3/task/{taskId}/activity/list` | query 支持 `pageSize`、`pageToken`、`actions`、`excludeActions`、`creatorIds`、`language`、`orderBy` |

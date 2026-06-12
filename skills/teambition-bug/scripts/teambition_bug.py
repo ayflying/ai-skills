@@ -591,6 +591,54 @@ def cmd_search(args: argparse.Namespace) -> None:
     print_json(filter_first_executor_self(client, result))
 
 
+def summarize_project(project: dict[str, Any]) -> dict[str, Any]:
+    project_id = project.get("id") or project.get("projectId")
+    return {
+        "id": project_id,
+        "name": project.get("name"),
+        "organizationId": project.get("organizationId"),
+        "creatorId": project.get("creatorId"),
+        "visibility": project.get("visibility"),
+        "isArchived": project.get("isArchived"),
+        "isDeleted": project.get("isDeleted"),
+        "created": project.get("created"),
+        "updated": project.get("updated"),
+        "url": f"https://www.teambition.com/project/{project_id}" if project_id else None,
+    }
+
+
+def first_project(result: Any) -> dict[str, Any]:
+    if isinstance(result, list):
+        if not result:
+            raise ApiError("未找到项目。")
+        project = result[0]
+        if isinstance(project, dict):
+            return project
+    if isinstance(result, dict) and isinstance(result.get("result"), list):
+        if not result["result"]:
+            raise ApiError("未找到项目。")
+        project = result["result"][0]
+        if isinstance(project, dict):
+            return project
+    if isinstance(result, dict):
+        return result
+    raise ApiError("无法识别项目响应格式。")
+
+
+def cmd_project(args: argparse.Namespace) -> None:
+    client = TeambitionClient()
+    project_id = args.project_id
+    if not project_id and args.url:
+        project_id = parse_teambition_url(args.url).get("projectId")
+    project_id = require_project_id(project_id)
+    result = client.request("GET", "/v3/project/query", params={"projectIds": project_id})
+    project = first_project(result)
+    output: dict[str, Any] = {"project": summarize_project(project)}
+    if args.raw:
+        output["rawProject"] = project
+    print_json(output)
+
+
 def get_task(client: TeambitionClient, task_id: str, *, action: str = "读取") -> dict[str, Any]:
     result = client.request("GET", "/v3/task/query", params={"taskId": task_id})
     task = first_task(result)
@@ -1151,6 +1199,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--page-token")
     p.add_argument("--include-archived", action="store_true")
     p.set_defaults(func=cmd_search)
+
+    p = sub.add_parser("project", help="查询项目/产品详情")
+    p.add_argument("--project-id", help="项目/产品 ID，可从 Teambition 项目链接解析")
+    p.add_argument("--url", help="Teambition 项目分享链接，可自动提取 projectId")
+    p.add_argument("--raw", action="store_true")
+    p.set_defaults(func=cmd_project)
 
     p = sub.add_parser("get", help="查询任务详情")
     p.add_argument("--task-id", required=True)

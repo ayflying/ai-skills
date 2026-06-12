@@ -100,6 +100,9 @@ python scripts/teambition_bug.py check-config
 # 解析 Teambition 链接中的 projectId、taskId、viewId
 python scripts/teambition_bug.py parse-url --url "https://www.teambition.com/project/6a292e9b13e121404ffea8c5/tasks/view/6a292e9b8e598fd9e0fb2515"
 
+# 查询项目/产品详情
+python scripts/teambition_bug.py project --project-id "<projectId>"
+
 # 按项目 TQL 查询任务
 python scripts/teambition_bug.py search --project-id "<projectId>" --tql "content CONTAIN \"登录\""
 
