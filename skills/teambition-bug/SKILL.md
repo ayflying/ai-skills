@@ -26,15 +26,16 @@ pip install -r requirements.txt
 
 ## 必须配置的参数
 
-脚本需要三个参数才能正常运行：
+脚本需要两个参数才能正常运行：
 
 | 参数 | 说明 |
 |------|------|
 | `TEAMBITION_TENANT_ID` | 企业 ID，对应请求头 `X-Tenant-Id` |
 | `TEAMBITION_USER_TOKEN` | 个人账号 token，权限与当前 Teambition 登录账号一致 |
-| `TEAMBITION_SELF_USER_ID` | 当前 Teambition 账号用户 ID，用于只读取和处理第一执行者为自己的任务 |
 
-### 如何获取这三个参数
+当前用户 ID 不需要单独配置。脚本会使用 `TEAMBITION_USER_TOKEN` 调用官方 `GET /users/me` 自动获取 `userId`，再用它校验任务第一执行者，避免多人争抢。
+
+### 如何获取这两个参数
 
 **获取 TEAMBITION_TENANT_ID（企业 ID）：**
 1. 登录 Teambition，进入任意项目
@@ -42,21 +43,10 @@ pip install -r requirements.txt
 3. 复制 `organization/` 后面的那串 ID 即可
 
 **获取 TEAMBITION_USER_TOKEN（个人 token）：**
-1. 登录 Teambition 网页版
-2. 按 F12 打开浏览器开发者工具
-3. 切换到 Network（网络）标签页
-4. 在 Teambition 页面进行任意操作（如刷新、点任务）
-5. 在 Network 列表中找到任意一个 API 请求（通常是 `/v3/` 或 `/api/` 开头的）
-6. 点击该请求，在 Headers 标签页中找到 `Authorization` 请求头
-7. 复制 `Bearer ` 后面的那串 token
-
-**获取 TEAMBITION_SELF_USER_ID（当前用户 ID）：**
-1. 登录 Teambition 网页版
-2. 按 F12 打开浏览器开发者工具
-3. 切换到 Console（控制台）标签页
-4. 输入 `document.cookie.match(/user_id=([^;]+)/)?.[1]` 并回车
-5. 或者在 Network 列表中找到任意 API 请求，在 Headers 中找到 `X-User-Id` 请求头的值
-6. 也可以在请求体/响应体中查找 `userId` 字段
+1. 打开 `https://open.teambition.com/user-mcp`
+2. 使用要处理任务的 Teambition 账号登录
+3. 在页面中创建或查看 `userToken`
+4. 复制 `userToken`，不要复制应用 token、App Secret 或浏览器请求里的临时值
 
 ### 存储方式（二选一）
 
@@ -64,14 +54,13 @@ pip install -r requirements.txt
 
 **方式一：仅当前对话使用（推荐首次尝试）**
 
-直接在对话中告诉 AI 这三个值，AI 会将它们作为环境变量传递给脚本。关闭对话后失效，不污染系统环境。
+直接在对话中告诉 AI 这两个值，AI 会将它们作为环境变量传递给脚本。关闭对话后失效，不污染系统环境。
 
 示例对话：
 ```
 我的 Teambition 参数：
 - TENANT_ID: 5f1234567890abcdef123456
 - USER_TOKEN: eyJhbGciOiJIUzI1NiIs...
-- SELF_USER_ID: 5f9876543210fedcba987654
 ```
 
 AI 会自动在每次调用脚本时带上这些参数。
@@ -84,14 +73,12 @@ Windows PowerShell（管理员）：
 ```powershell
 [Environment]::SetEnvironmentVariable("TEAMBITION_TENANT_ID", "<你的企业ID>", "User")
 [Environment]::SetEnvironmentVariable("TEAMBITION_USER_TOKEN", "<你的token>", "User")
-[Environment]::SetEnvironmentVariable("TEAMBITION_SELF_USER_ID", "<你的用户ID>", "User")
 ```
 
 macOS/Linux：
 ```bash
 echo 'export TEAMBITION_TENANT_ID="<你的企业ID>"' >> ~/.bashrc
 echo 'export TEAMBITION_USER_TOKEN="<你的token>"' >> ~/.bashrc
-echo 'export TEAMBITION_SELF_USER_ID="<你的用户ID>"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -156,7 +143,7 @@ python scripts/teambition_bug.py finish --task-id "<taskId>" --yes
 - 用户只给产品/项目链接时，先用 `parse-url` 解析 `projectId`，后续项目级命令都显式传 `--project-id <projectId>`；`tasks/view/<id>` 是视图 ID，不当作任务 ID。
 - 如果项目级命令缺少 `--project-id`，引导用户复制 Teambition 产品/项目分享链接给 AI，让 AI 从链接里的 `/project/<id>` 提取产品 ID 后重试。
 - 任务列表必须按紧急程度从高到低处理；优先看任务 `priority`、优先级名称、截止时间、标题/备注中的紧急关键词，再决定顺序。
-- 只读取和处理第一执行者为自己的任务。任务列表必须先按 `TEAMBITION_SELF_USER_ID` 过滤；单任务读取、留言、改状态或更新字段前，也必须确认第一执行者等于 `TEAMBITION_SELF_USER_ID`。
+- 只读取和处理第一执行者为自己的任务。任务列表必须先按 `/users/me` 返回的当前 `userId` 过滤；单任务读取、留言、改状态或更新字段前，也必须确认第一执行者等于当前 `userId`。
 - 如果无法确认任务第一执行者，或第一执行者不是自己，跳过该任务，不读取详情、不留言、不修改，避免与他人争抢。
 - 读取 bug 清单或上下文时，截图是判断 bug 原因的重要证据，不能只看文字。`context/get --with-rich-text` 会按官方 `GET /v3/task/rtf/render` 自动渲染 `taskId:note`、`taskId:trace:<traceId>` 和可识别的 `taskId:cf:<cfId>`，从 `rtfValueToken.attachments` 提取真实图片/附件下载链接。
 - 对可访问截图，先运行 `download-images --task-id <taskId>` 下载，再用可用的视觉工具查看本地图片内容，并把截图里看到的页面、报错、异常状态纳入 bug 判断；OSS 图片直链不能带 OpenAPI 的 `Authorization` 头，脚本已自动区分 API 请求和图片下载。

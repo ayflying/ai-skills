@@ -82,7 +82,6 @@ def set_runtime_env(args: argparse.Namespace) -> None:
     mapping = {
         "tenant_id": "TEAMBITION_TENANT_ID",
         "user_token": "TEAMBITION_USER_TOKEN",
-        "self_user_id": "TEAMBITION_SELF_USER_ID",
     }
     for arg_name, env_name in mapping.items():
         value = getattr(args, arg_name, None)
@@ -140,12 +139,23 @@ def first_executor_id(task: dict[str, Any]) -> str | None:
     return None
 
 
-def current_user_id() -> str:
-    return env("TEAMBITION_SELF_USER_ID", required=True) or ""
+def user_id_from_profile(profile: Any) -> str | None:
+    if not isinstance(profile, dict):
+        return None
+    value = profile.get("userId") or profile.get("_userId") or profile.get("id") or profile.get("_id")
+    return str(value) if value else None
 
 
-def ensure_first_executor_is_self(task: dict[str, Any], *, action: str = "读取") -> None:
-    self_id = current_user_id()
+def mask_value(value: str | None, *, head: int = 6, tail: int = 4) -> str | None:
+    if not value:
+        return value
+    if len(value) <= head + tail:
+        return value[:2] + "..." if len(value) > 2 else "***"
+    return f"{value[:head]}...{value[-tail:]}"
+
+
+def ensure_first_executor_is_self(client: "TeambitionClient", task: dict[str, Any], *, action: str = "读取") -> None:
+    self_id = client.current_user_id()
     executor_id = first_executor_id(task)
     task_id = task.get("id") or task.get("taskId") or "<unknown>"
     if not executor_id:
@@ -157,8 +167,8 @@ def ensure_first_executor_is_self(task: dict[str, Any], *, action: str = "读取
         )
 
 
-def filter_first_executor_self(result: Any) -> Any:
-    self_id = current_user_id()
+def filter_first_executor_self(client: "TeambitionClient", result: Any) -> Any:
+    self_id = client.current_user_id()
 
     def keep(task: Any) -> bool:
         return isinstance(task, dict) and first_executor_id(task) == self_id
@@ -168,11 +178,11 @@ def filter_first_executor_self(result: Any) -> Any:
     if isinstance(result, dict) and isinstance(result.get("result"), list):
         filtered = dict(result)
         filtered["result"] = [task for task in result["result"] if keep(task)]
-        filtered["filteredByFirstExecutorId"] = self_id
+        filtered["filteredByCurrentUserId"] = self_id
         filtered["filteredOutCount"] = len(result["result"]) - len(filtered["result"])
         return filtered
     if isinstance(result, dict):
-        ensure_first_executor_is_self(result)
+        ensure_first_executor_is_self(client, result)
     return result
 
 
@@ -205,6 +215,7 @@ class TeambitionClient:
         self.gateway = (env("TEAMBITION_GATEWAY", default=DEFAULT_GATEWAY) or DEFAULT_GATEWAY).rstrip("/")
         self.tenant_id = env("TEAMBITION_TENANT_ID", required=True) or ""
         self.token = env("TEAMBITION_USER_TOKEN", required=True) or ""
+        self._current_user: dict[str, Any] | None = None
 
     def headers(self) -> dict[str, str]:
         return {
@@ -242,6 +253,22 @@ class TeambitionClient:
             suffix = f" requestId={request_id}" if request_id else ""
             raise ApiError(f"API 请求失败: HTTP {response.status_code} {message}{suffix}")
         return data.get("result", data)
+
+    def current_user(self) -> dict[str, Any]:
+        if self._current_user is None:
+            result = self.request("GET", "/users/me")
+            if not isinstance(result, dict):
+                raise ApiError("无法识别当前用户信息响应。")
+            if not user_id_from_profile(result):
+                raise ApiError("当前用户信息中没有 userId，无法校验第一执行者。")
+            self._current_user = result
+        return self._current_user
+
+    def current_user_id(self) -> str:
+        user_id = user_id_from_profile(self.current_user())
+        if not user_id:
+            raise ApiError("当前用户信息中没有 userId，无法校验第一执行者。")
+        return user_id
 
 
 def extract_links_from_html(text: str) -> dict[str, list[str]]:
@@ -509,12 +536,11 @@ def cmd_check_config(args: argparse.Namespace) -> None:
     params = {
         "TEAMBITION_TENANT_ID": env("TEAMBITION_TENANT_ID"),
         "TEAMBITION_USER_TOKEN": env("TEAMBITION_USER_TOKEN"),
-        "TEAMBITION_SELF_USER_ID": env("TEAMBITION_SELF_USER_ID"),
     }
     result = {"configured": {}, "missing": []}
     for name, value in params.items():
         if value:
-            display = value[:8] + "..." if len(value) > 8 else value
+            display = mask_value(value, head=8, tail=4)
             result["configured"][name] = display
         else:
             result["missing"].append(name)
@@ -525,13 +551,20 @@ def cmd_check_config(args: argparse.Namespace) -> None:
             "缺少参数: " + ", ".join(result["missing"])
             + "。请按以下方式获取：\n"
             "1. TENANT_ID: 浏览器地址栏 /organization/<id>/my 中的 id\n"
-            "2. USER_TOKEN: F12 -> Network -> 任意请求 Headers -> Authorization 中 Bearer 后面的值\n"
-            "3. SELF_USER_ID: F12 -> Network -> 任意请求 Headers -> X-User-Id 的值\n"
-            "获取后可通过 --tenant-id / --user-token / --self-user-id 命令行参数传入，"
+            "2. USER_TOKEN: 登录 https://open.teambition.com/user-mcp 后创建或查看 userToken\n"
+            "当前用户 ID 会通过 GET /users/me 自动获取，不需要单独配置。\n"
+            "获取后可通过 --tenant-id / --user-token 命令行参数传入，"
             "或保存到系统环境变量。"
         )
     else:
         result["status"] = "ok"
+        client = TeambitionClient()
+        profile = client.current_user()
+        result["currentUser"] = {
+            "userId": mask_value(user_id_from_profile(profile), head=6, tail=4),
+            "profileLoaded": True,
+            "source": "GET /users/me",
+        }
     print_json(result)
 
 
@@ -545,7 +578,6 @@ def cmd_parse_url(args: argparse.Namespace) -> None:
 def cmd_search(args: argparse.Namespace) -> None:
     client = TeambitionClient()
     project_id = require_project_id(args.project_id)
-    current_user_id()
     result = client.request(
         "GET",
         f"/v3/project/{project_id}/task/query",
@@ -556,14 +588,13 @@ def cmd_search(args: argparse.Namespace) -> None:
             "pageSize": args.page_size,
         },
     )
-    print_json(filter_first_executor_self(result))
+    print_json(filter_first_executor_self(client, result))
 
 
 def get_task(client: TeambitionClient, task_id: str, *, action: str = "读取") -> dict[str, Any]:
-    current_user_id()
     result = client.request("GET", "/v3/task/query", params={"taskId": task_id})
     task = first_task(result)
-    ensure_first_executor_is_self(task, action=action)
+    ensure_first_executor_is_self(client, task, action=action)
     return task
 
 
@@ -1104,7 +1135,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Teambition Bug OpenAPI helper")
     parser.add_argument("--tenant-id", dest="tenant_id", help="TEAMBITION_TENANT_ID，企业 ID")
     parser.add_argument("--user-token", dest="user_token", help="TEAMBITION_USER_TOKEN，个人账号 token")
-    parser.add_argument("--self-user-id", dest="self_user_id", help="TEAMBITION_SELF_USER_ID，当前用户 ID")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("check-config", help="检测参数配置是否完整")

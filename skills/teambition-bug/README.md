@@ -23,15 +23,14 @@ pip install -r requirements.txt
 ```env
 TEAMBITION_USER_TOKEN=your_user_token
 TEAMBITION_TENANT_ID=your_organization_id
-TEAMBITION_SELF_USER_ID=your_user_id
 ```
 
-- `TEAMBITION_USER_TOKEN`: 个人账号 token，权限与当前 Teambition 登录账号一致。
+- `TEAMBITION_USER_TOKEN`: 个人账号 token，权限与当前 Teambition 登录账号一致。登录 [Teambition User MCP](https://open.teambition.com/user-mcp) 后创建或查看 `userToken`。
 - `TEAMBITION_TENANT_ID`: 企业 ID，例如企业链接 `/organization/<id>/my` 中的 `<id>`。
-- `TEAMBITION_SELF_USER_ID`: 当前 Teambition 账号用户 ID，用于只读取和处理第一执行者为自己的任务。
+- 当前用户 ID 不需要手动配置，脚本会用 `TEAMBITION_USER_TOKEN` 调用 `GET /users/me` 自动获取，并用于只读取和处理第一执行者为自己的任务。
 - 默认网关是 `https://open.teambition.com/api`，不用写入 `.env`。
 - 产品/项目 ID 不写入全局环境变量。不同对话可能对应不同产品；如果缺少产品 ID，让用户复制 Teambition 产品/项目分享链接给 AI，AI 可用 `parse-url` 从链接里的 `/project/<id>` 提取 `projectId`。
-- 其他设备使用时，只需要安装技能、安装 Python 依赖，并填入自己的 `TEAMBITION_USER_TOKEN`、`TEAMBITION_TENANT_ID` 和 `TEAMBITION_SELF_USER_ID`。
+- 其他设备使用时，只需要安装技能、安装 Python 依赖，并填入自己的 `TEAMBITION_USER_TOKEN` 和 `TEAMBITION_TENANT_ID`。
 
 ## 示例
 
