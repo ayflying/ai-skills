@@ -142,6 +142,7 @@ python scripts/teambition_bug.py finish --task-id "<taskId>" --yes
 
 ## 操作规则
 
+- **抢占优先**：确认要处理某个任务后，**立即**执行 `start --task-id "<taskId>" --status-name "修改中" --yes`，然后再做 context 读取、下载截图、留言等后续操作。不要先读取详情再改状态——读取期间任务可能被其他人认领。改状态是第一步，其他操作是第二步。
 - 修改状态、执行人、优先级、截止时间或留言前，先读取任务详情确认目标任务。
 - 用户只给产品/项目链接时，先用 `parse-url` 解析 `projectId`，后续项目级命令都显式传 `--project-id <projectId>`；`tasks/view/<id>` 是视图 ID，不当作任务 ID。
 - 如果项目级命令缺少 `--project-id`，引导用户复制 Teambition 产品/项目分享链接给 AI，让 AI 从链接里的 `/project/<id>` 提取产品 ID 后重试。
