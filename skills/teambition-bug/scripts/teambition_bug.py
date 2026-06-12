@@ -33,6 +33,7 @@ WRITE_COMMANDS = {
     "quick-reply",
     "ask",
     "start",
+    "claim-context",
     "finish",
     "update-status",
     "update-title",
@@ -706,12 +707,11 @@ def cmd_traces(args: argparse.Namespace) -> None:
     print_json(result)
 
 
-def cmd_context(args: argparse.Namespace) -> None:
-    client = TeambitionClient()
-    task = get_task(client, args.task_id)
-    activities = list_activities(client, args.task_id, page_size=args.page_size)
+def build_task_context(client: TeambitionClient, task_id: str, page_size: int = 50) -> dict[str, Any]:
+    task = get_task(client, task_id)
+    activities = list_activities(client, task_id, page_size=page_size)
     try:
-        traces = client.request("GET", f"/v3/task/{args.task_id}/traces")
+        traces = client.request("GET", f"/v3/task/{task_id}/traces")
     except ApiError as exc:
         traces = {"error": str(exc)}
 
@@ -737,19 +737,22 @@ def cmd_context(args: argparse.Namespace) -> None:
     )
     image_placeholders = count_image_placeholders(task) + count_image_placeholders(activities) + count_image_placeholders(traces)
 
-    print_json(
-        {
-            "task": summarize_task(task),
-            "activities": activities,
-            "traces": traces,
-            "richTextLinks": rich_text,
-            "richTextRender": rich_text_render,
-            "mediaResources": media_resources,
-            "imagePlaceholders": image_placeholders,
-            "imageAnalysisRequired": bool(media_resources["images"] or image_placeholders),
-            "missingInfoHints": guess_missing_info(task, activities),
-        }
-    )
+    return {
+        "task": summarize_task(task),
+        "activities": activities,
+        "traces": traces,
+        "richTextLinks": rich_text,
+        "richTextRender": rich_text_render,
+        "mediaResources": media_resources,
+        "imagePlaceholders": image_placeholders,
+        "imageAnalysisRequired": bool(media_resources["images"] or image_placeholders),
+        "missingInfoHints": guess_missing_info(task, activities),
+    }
+
+
+def cmd_context(args: argparse.Namespace) -> None:
+    client = TeambitionClient()
+    print_json(build_task_context(client, args.task_id, page_size=args.page_size))
 
 
 def guess_missing_info(task: dict[str, Any], activities: Any) -> list[str]:
@@ -1056,17 +1059,39 @@ def cmd_list_status(args: argparse.Namespace) -> None:
 
 def cmd_start(args: argparse.Namespace) -> None:
     client = TeambitionClient()
-    task = get_task(client, args.task_id, action="更新状态")
-    statuses = list_statuses(client, args.task_id)
-    status = pick_status(statuses, args.status_name, args.status_id)
-    confirm_or_exit(f"将任务《{task.get('content')}》状态改为 {status.get('name') or status.get('id')}。", args.yes)
-    body = {"taskflowstatusId": status.get("id"), "tfsUpdateNote": args.note}
+    print_json(start_task(client, args.task_id, args.status_name, args.status_id, args.note, args.yes))
+
+
+def start_task(
+    client: TeambitionClient,
+    task_id: str,
+    status_name: str | None,
+    status_id: str | None,
+    note: str | None,
+    yes: bool,
+) -> dict[str, Any]:
+    task = get_task(client, task_id, action="更新状态")
+    statuses = list_statuses(client, task_id)
+    status = pick_status(statuses, status_name, status_id)
+    confirm_or_exit(f"将任务《{task.get('content')}》状态改为 {status.get('name') or status.get('id')}。", yes)
+    body = {"taskflowstatusId": status.get("id"), "tfsUpdateNote": note}
     result = client.request(
         "PUT",
-        f"/v3/task/{args.task_id}/taskflowstatus",
+        f"/v3/task/{task_id}/taskflowstatus",
         json_body={k: v for k, v in body.items() if v is not None},
     )
-    print_json(result)
+    return {
+        "task": summarize_task(task),
+        "targetStatus": {"id": status.get("id"), "name": status.get("name")},
+        "result": result,
+    }
+
+
+def cmd_claim_context(args: argparse.Namespace) -> None:
+    client = TeambitionClient()
+    claim = start_task(client, args.task_id, args.status_name, args.status_id, args.note, args.yes)
+    context = build_task_context(client, args.task_id, page_size=args.page_size)
+    print_json({"claim": claim, "context": context})
 
 
 def cmd_update_status(args: argparse.Namespace) -> None:
@@ -1289,6 +1314,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--note")
     p.add_argument("--yes", action="store_true")
     p.set_defaults(func=cmd_start)
+
+    p = sub.add_parser("claim-context", help="确认要修复时，先推进到修改中，再返回完整上下文")
+    p.add_argument("--task-id", required=True)
+    p.add_argument("--status-name", default="修改中", help="优先精确匹配；找不到时匹配修复中/处理中/已认领等近义状态")
+    p.add_argument("--status-id")
+    p.add_argument("--note")
+    p.add_argument("--page-size", type=int, default=50)
+    p.add_argument("--yes", action="store_true")
+    p.set_defaults(func=cmd_claim_context)
 
     p = sub.add_parser("update-status", help="按状态名称或 ID 更新任务状态")
     p.add_argument("--task-id", required=True)
