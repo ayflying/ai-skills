@@ -136,17 +136,25 @@ python scripts/teambition_bug.py quick-reply --task-id "<taskId>" --template nee
 # 将任务状态/标签状态改为“修改中”
 python scripts/teambition_bug.py start --task-id "<taskId>" --status-name "修改中" --yes
 
+# 只读审计真实卡片字段，确认工作流状态、看板列、任务列表、卡片类型/自定义字段
+python scripts/teambition_bug.py audit-task --task-id "<taskId>"
+
+# 如果已知道正确面板字段，完成时同步校验；任一字段不匹配会直接报错
+python scripts/teambition_bug.py finish --task-id "<taskId>" --verification "远程容器编排启动并验证通过" --expect-tasklist-id "<待验收列表ID>" --expect-custom-field "类型=Bug" --yes
+
 # 或按当前工作流已有状态更新，例如待验收
 python scripts/teambition_bug.py update-status --task-id "<taskId>" --status-name "待验收" --yes
 
 # 修复并验证完成后，推进到“待验收”或待测试/待确认等近义状态
-python scripts/teambition_bug.py finish --task-id "<taskId>" --yes
+python scripts/teambition_bug.py finish --task-id "<taskId>" --verification "写明实际自测/构建/远程验证结果" --yes
 ```
 
 ## 操作规则
 
-- **抢占优先**：从清单中确认要处理某个任务后，**立即**执行 `claim-context --task-id "<taskId>" --status-name "修改中" --yes`。该命令会先把任务推进到修改中/修复中/已认领等处理中状态，再返回完整上下文。不要先读取完整详情再改状态，读取期间任务可能被其他人认领。
-- 如果只是判断任务是否归自己、是否需求明确，可以先用 `search/get/context` 做只读检查；一旦决定要开始修，就必须先 `claim-context` 或 `start` 抢占状态。
+- **抢占优先**：从清单中确认要处理某个任务后，**立即**执行 `claim-context --task-id "<taskId>" --status-name "修改中" --yes`。该命令会先尝试把任务推进到修改中/修复中/已认领等处理中状态，并在成功后返回完整上下文。不要先读取完整详情再改状态，读取期间任务可能被其他人认领。
+- **抢占必须复核**：`claim-context`、`start`、`update-status` 会发起 Teambition 状态更新请求，检查响应中的业务错误，并在更新后回读任务状态。只有输出中 `verifiedTask.statusId` 等于 `targetStatus.id` 才算状态修改成功；如果命令报错或没有 `verifiedTask`，必须停止处理、如实告知状态未变，不能声称任务已在修改中。
+- **看板必须复核**：Teambition 的看板列、任务列表、卡片类型可能不是 `taskflowstatusId`，还可能由 `stageId`、`sfcId`、`tasklistId` 或 `customfields` 决定。用户反馈“还在未开始/未完成/类型乱”时，先运行 `audit-task --task-id "<taskId>"` 读取真实字段；已知道期望值时，在 `start`、`claim-context`、`update-status`、`finish` 上传 `--expect-stage-id`、`--expect-sfc-id`、`--expect-tasklist-id` 或 `--expect-custom-field "字段=值"`。如果审计 `ok=false` 或命令报“卡片面板复核失败”，不能声称已拖到目标列或类型已修正。
+- 如果只是判断任务是否归自己、是否需求明确，可以先用 `search/get/context` 做只读检查；一旦决定要开始修，就必须先 `claim-context` 或 `start` 抢占状态。抢占失败时不要继续改业务代码，先以真实 API 错误和回读结果为准说明原因；不要把本地推断的工作流字段当成最终结论。
 - 修改状态、执行人、优先级、截止时间或留言前，先读取任务详情确认目标任务。
 - 用户只给产品/项目链接时，先用 `parse-url` 解析 `projectId`，后续项目级命令都显式传 `--project-id <projectId>`；`tasks/view/<id>` 是视图 ID，不当作任务 ID。
 - 如果项目级命令缺少 `--project-id`，引导用户复制 Teambition 产品/项目分享链接给 AI，让 AI 从链接里的 `/project/<id>` 提取产品 ID 后重试。
@@ -161,7 +169,7 @@ python scripts/teambition_bug.py finish --task-id "<taskId>" --yes
 - 可以多次留言追问来澄清如何复现、期望结果、实际结果、环境信息、账号/权限、截图或验收标准；复现方式不清楚或需求明确前千万不要乱改。
 - “修改中”不是固定 ID，必须先调用状态列表并按名称或语义匹配；这里的状态包含产品工作流里的状态/标签状态。
 - 进入处理状态时优先匹配“修改中”，如果没有，选择“修复中”“处理中”“进行中”“开发中”“已认领”“已领取”“已接收”等可表示正在处理的近义状态；不要把“待验收”“已完成”“关闭”等终态当作处理中。
-- 明确修复完成并完成必要验证后，必须把任务状态推进到 `finish` 的目标状态，默认“待验收”；如果没有精确状态，匹配“待验证”“待测试”“待确认”“待审核”“验收中”“提测”等表示等待验收/确认的近义状态。
+- 明确修复完成并完成必要验证后，必须执行 `finish --verification "<实际验证结果>" --yes` 推进到目标状态，默认“待验收”；如果没有精确状态，匹配“待验证”“待测试”“待确认”“待审核”“验收中”“提测”等表示等待验收/确认的近义状态。`finish` 不允许省略验证结果，也不能推进到“已完成/关闭”等终态。
 - 不要把“已完成”“关闭”“已解决”“上线”等终态当作待验收。除非用户明确要求直接关闭，否则修完后只推进到待验收类状态，让产品/测试能看见并验收。
 - 官方公开文档未提供单独“回复某条评论”的任务接口；`reply` 会引用动态/评论 ID 并创建一条新的任务评论。
 - 疑问 bug 优先留言追问，不擅自推进状态；疑问通常包括不知道如何复现、缺少具体步骤、期望结果、实际结果、环境信息或截图无法访问。

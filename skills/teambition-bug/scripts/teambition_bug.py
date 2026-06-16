@@ -115,6 +115,12 @@ def print_json(data: Any) -> None:
     print(json.dumps(data, ensure_ascii=False, indent=2))
 
 
+def is_success_code(value: Any) -> bool:
+    if isinstance(value, str) and not value.strip():
+        return True
+    return value in (None, 0, 200, "0", "200")
+
+
 def first_executor_id(task: dict[str, Any]) -> str | None:
     executor_id = task.get("executorId") or task.get("executor_id")
     if executor_id:
@@ -248,11 +254,29 @@ class TeambitionClient:
         except ValueError as exc:
             raise ApiError(f"响应不是 JSON: HTTP {response.status_code} {response.text[:300]}") from exc
 
-        if response.status_code >= 400 or data.get("success") is False or data.get("code") not in (None, 0, 200):
+        if not isinstance(data, dict):
+            if response.status_code >= 400:
+                raise ApiError(f"API 请求失败: HTTP {response.status_code} {response.text[:300]}")
+            return data
+
+        error_code = data.get("errorCode")
+        code = data.get("code")
+        if (
+            response.status_code >= 400
+            or data.get("success") is False
+            or not is_success_code(code)
+            or not is_success_code(error_code)
+        ):
             message = data.get("errorMessage") or data.get("message") or response.text[:300]
             request_id = data.get("requestId") or data.get("traceId")
-            suffix = f" requestId={request_id}" if request_id else ""
-            raise ApiError(f"API 请求失败: HTTP {response.status_code} {message}{suffix}")
+            details = [f"HTTP {response.status_code}"]
+            if not is_success_code(error_code):
+                details.append(f"errorCode={error_code}")
+            if not is_success_code(code):
+                details.append(f"code={code}")
+            if request_id:
+                details.append(f"requestId={request_id}")
+            raise ApiError(f"API 请求失败: {' '.join(details)} {message}")
         return data.get("result", data)
 
     def current_user(self) -> dict[str, Any]:
@@ -504,17 +528,123 @@ def render_task_rich_text(client: TeambitionClient, task: dict[str, Any], traces
     return {"rtfFields": fields, "items": compact_items, "resources": extracted["resources"]}
 
 
-def summarize_task(task: dict[str, Any]) -> dict[str, Any]:
+def status_items(statuses: Any) -> list[dict[str, Any]]:
+    if isinstance(statuses, list):
+        return [item for item in statuses if isinstance(item, dict)]
+    if isinstance(statuses, dict) and isinstance(statuses.get("result"), list):
+        return [item for item in statuses["result"] if isinstance(item, dict)]
+    return []
+
+
+def status_name_by_id(statuses: Any, status_id: str | None) -> str | None:
+    if not status_id:
+        return None
+    for item in status_items(statuses):
+        if item.get("id") == status_id:
+            return str(item.get("name")) if item.get("name") else None
+    return None
+
+
+def compact_custom_field(field: Any) -> Any:
+    if not isinstance(field, dict):
+        return field
+    return {
+        key: field.get(key)
+        for key in (
+            "id",
+            "cfId",
+            "customfieldId",
+            "name",
+            "title",
+            "type",
+            "value",
+            "displayValue",
+            "values",
+            "optionId",
+            "optionIds",
+        )
+        if field.get(key) is not None
+    }
+
+
+def custom_field_identity(field: dict[str, Any]) -> list[str]:
+    values: list[str] = []
+    for key in ("id", "cfId", "customfieldId", "name", "title"):
+        value = field.get(key)
+        if value not in (None, ""):
+            values.append(str(value))
+    return values
+
+
+def custom_field_value(field: dict[str, Any]) -> Any:
+    for key in ("displayValue", "value", "values", "optionId", "optionIds"):
+        if field.get(key) not in (None, "", [], {}):
+            return field.get(key)
+    return None
+
+
+def find_custom_field(task: dict[str, Any], field_key: str) -> dict[str, Any] | None:
+    custom_fields = task.get("customfields") or task.get("customFields") or []
+    if isinstance(custom_fields, dict):
+        for key, value in custom_fields.items():
+            if str(key) == field_key:
+                return {"id": key, "value": value}
+        return None
+    if not isinstance(custom_fields, list):
+        return None
+    for field in custom_fields:
+        if isinstance(field, dict) and field_key in custom_field_identity(field):
+            return field
+    return None
+
+
+def normalize_check_value(value: Any) -> str:
+    if isinstance(value, (list, dict)):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    return "" if value is None else str(value)
+
+
+def parse_expected_custom_fields(values: list[str] | None) -> list[tuple[str, str]]:
+    result: list[tuple[str, str]] = []
+    for item in values or []:
+        if "=" not in item:
+            raise ConfigError(f"自定义字段期望格式必须是 字段=值，当前是: {item}")
+        key, value = item.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            raise ConfigError(f"自定义字段名称不能为空: {item}")
+        result.append((key, value))
+    return result
+
+
+def panel_fields(task: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "stageId": task.get("stageId"),
+        "sfcId": task.get("sfcId"),
+        "tasklistId": task.get("tasklistId"),
+        "isDone": task.get("isDone"),
+        "isArchived": task.get("isArchived"),
+        "isDeleted": task.get("isDeleted"),
+        "customfields": [compact_custom_field(item) for item in (task.get("customfields") or task.get("customFields") or [])],
+        "tagIds": task.get("tagIds") or [],
+    }
+
+
+def summarize_task(task: dict[str, Any], statuses: Any | None = None) -> dict[str, Any]:
+    status_id = task.get("tfsId") or task.get("taskflowstatusId")
     return {
         "id": task.get("id") or task.get("taskId"),
         "title": task.get("content"),
         "note": task.get("note"),
         "projectId": task.get("projectId"),
-        "statusId": task.get("tfsId") or task.get("taskflowstatusId"),
+        "statusId": status_id,
+        "statusName": status_name_by_id(statuses, status_id) if statuses is not None else None,
         "executorId": task.get("executorId"),
         "firstExecutorId": first_executor_id(task),
         "priority": task.get("priority"),
         "dueDate": task.get("dueDate"),
+        "panelFields": panel_fields(task),
         "url": f"https://www.teambition.com/task/{task.get('id') or task.get('taskId')}",
     }
 
@@ -647,10 +777,82 @@ def get_task(client: TeambitionClient, task_id: str, *, action: str = "读取") 
     return task
 
 
+def verify_task_status(client: TeambitionClient, task_id: str, target_status: dict[str, Any]) -> dict[str, Any]:
+    refreshed = get_task(client, task_id, action="复核状态")
+    summary = summarize_task(refreshed)
+    target_id = target_status.get("id")
+    if target_id and summary.get("statusId") != target_id:
+        raise ApiError(
+            "状态更新后复核失败: "
+            f"目标状态是 {target_status.get('name') or target_id}({target_id})，"
+            f"实际状态 ID 是 {summary.get('statusId')}。"
+        )
+    return refreshed
+
+
+def audit_task(
+    client: TeambitionClient,
+    task_id: str,
+    *,
+    expect_status_name: str | None = None,
+    expect_status_id: str | None = None,
+    expect_stage_id: str | None = None,
+    expect_sfc_id: str | None = None,
+    expect_tasklist_id: str | None = None,
+    expect_custom_fields: list[tuple[str, str]] | None = None,
+) -> dict[str, Any]:
+    task = get_task(client, task_id, action="审计任务")
+    statuses = list_statuses(client, task_id)
+    summary = summarize_task(task, statuses)
+    checks: list[dict[str, Any]] = []
+
+    def add_check(name: str, actual: Any, expected: Any) -> None:
+        if expected is None:
+            return
+        checks.append({"name": name, "expected": expected, "actual": actual, "ok": actual == expected})
+
+    add_check("statusId", summary.get("statusId"), expect_status_id)
+    add_check("statusName", summary.get("statusName"), expect_status_name)
+    panel = summary.get("panelFields") or {}
+    add_check("stageId", panel.get("stageId"), expect_stage_id)
+    add_check("sfcId", panel.get("sfcId"), expect_sfc_id)
+    add_check("tasklistId", panel.get("tasklistId"), expect_tasklist_id)
+    for field_key, expected_value in expect_custom_fields or []:
+        field = find_custom_field(task, field_key)
+        actual_value = custom_field_value(field) if field else None
+        checks.append(
+            {
+                "name": f"customfield:{field_key}",
+                "expected": expected_value,
+                "actual": actual_value,
+                "ok": normalize_check_value(actual_value) == expected_value,
+            }
+        )
+
+    warnings: list[str] = []
+    if summary.get("statusName") in ("未完成", "未开始", "待处理", "待开始"):
+        warnings.append("任务工作流状态仍像未处理状态，请不要声称已推进。")
+    if panel.get("isDone") is True and summary.get("statusName") not in ("已完成", "完成", "已关闭", "关闭"):
+        warnings.append("isDone=true 但工作流状态不是完成类状态，面板可能存在状态/完成标记不一致。")
+    if not checks:
+        warnings.append("未传入期望值，本次仅输出审计字段；面板类型是否正确需结合 stageId/sfcId/tasklistId 或自定义字段判断。")
+
+    return {
+        "task": summary,
+        "availableStatuses": [
+            {"id": item.get("id"), "name": item.get("name")} for item in status_items(statuses)
+        ],
+        "checks": checks,
+        "ok": all(item["ok"] for item in checks) if checks else None,
+        "warnings": warnings,
+    }
+
+
 def cmd_get(args: argparse.Namespace) -> None:
     client = TeambitionClient()
     task = get_task(client, args.task_id)
-    output: dict[str, Any] = {"task": summarize_task(task), "rawTask": task if args.raw else None}
+    statuses = list_statuses(client, args.task_id)
+    output: dict[str, Any] = {"task": summarize_task(task, statuses), "rawTask": task if args.raw else None}
     activities = None
     if args.with_activities:
         activities = list_activities(client, args.task_id, page_size=args.page_size)
@@ -671,6 +873,22 @@ def cmd_get(args: argparse.Namespace) -> None:
     if output.get("rawTask") is None:
         output.pop("rawTask", None)
     print_json(output)
+
+
+def cmd_audit_task(args: argparse.Namespace) -> None:
+    client = TeambitionClient()
+    print_json(
+        audit_task(
+            client,
+            args.task_id,
+            expect_status_name=args.expect_status_name,
+            expect_status_id=args.expect_status_id,
+            expect_stage_id=args.expect_stage_id,
+            expect_sfc_id=args.expect_sfc_id,
+            expect_tasklist_id=args.expect_tasklist_id,
+            expect_custom_fields=parse_expected_custom_fields(args.expect_custom_field),
+        )
+    )
 
 
 def list_activities(client: TeambitionClient, task_id: str, page_size: int = 50, actions: str | None = None) -> Any:
@@ -1001,6 +1219,37 @@ def review_status_score(name: str) -> tuple[int, int]:
     return (1, -min(matches))
 
 
+def ensure_start_status_is_active(target_status: dict[str, Any]) -> None:
+    name = str(target_status.get("name") or "").strip()
+    status_id = target_status.get("id")
+    if name and active_status_score(name)[0] > 0:
+        return
+    display = name or str(status_id or "<unknown>")
+    raise ApiError(
+        f"start/claim-context 只能抢占到处理中状态，不能设置为 {display}。"
+        "请使用修改中/修复中/处理中/已认领等状态；完成后使用 finish，其他明确状态使用 update-status。"
+    )
+
+
+def require_finish_verification(verification: str | None) -> str:
+    value = (verification or "").strip()
+    if not value:
+        raise ConfigError("finish 必须提供 --verification，写清楚已完成的自测/验证结果；未验证不能推进到待验收。")
+    return value
+
+
+def ensure_finish_status_is_review(target_status: dict[str, Any]) -> None:
+    name = str(target_status.get("name") or "").strip()
+    status_id = target_status.get("id")
+    if name and review_status_score(name)[0] > 0:
+        return
+    display = name or str(status_id or "<unknown>")
+    raise ApiError(
+        f"finish 只能推进到待验收/待验证/待测试等等待验收状态，不能设置为 {display}。"
+        "如果只是普通改状态，请使用 update-status；如果要关闭任务，必须由用户明确要求。"
+    )
+
+
 def pick_status(statuses: Any, status_name: str | None, status_id: str | None) -> dict[str, Any]:
     items = statuses if isinstance(statuses, list) else statuses.get("result", []) if isinstance(statuses, dict) else []
     if status_id:
@@ -1059,7 +1308,20 @@ def cmd_list_status(args: argparse.Namespace) -> None:
 
 def cmd_start(args: argparse.Namespace) -> None:
     client = TeambitionClient()
-    print_json(start_task(client, args.task_id, args.status_name, args.status_id, args.note, args.yes))
+    print_json(
+        start_task(
+            client,
+            args.task_id,
+            args.status_name,
+            args.status_id,
+            args.note,
+            args.yes,
+            expect_stage_id=args.expect_stage_id,
+            expect_sfc_id=args.expect_sfc_id,
+            expect_tasklist_id=args.expect_tasklist_id,
+            expect_custom_fields=parse_expected_custom_fields(args.expect_custom_field),
+        )
+    )
 
 
 def start_task(
@@ -1069,10 +1331,15 @@ def start_task(
     status_id: str | None,
     note: str | None,
     yes: bool,
+    expect_stage_id: str | None = None,
+    expect_sfc_id: str | None = None,
+    expect_tasklist_id: str | None = None,
+    expect_custom_fields: list[tuple[str, str]] | None = None,
 ) -> dict[str, Any]:
     task = get_task(client, task_id, action="更新状态")
     statuses = list_statuses(client, task_id)
     status = pick_status(statuses, status_name, status_id)
+    ensure_start_status_is_active(status)
     confirm_or_exit(f"将任务《{task.get('content')}》状态改为 {status.get('name') or status.get('id')}。", yes)
     body = {"taskflowstatusId": status.get("id"), "tfsUpdateNote": note}
     result = client.request(
@@ -1080,16 +1347,43 @@ def start_task(
         f"/v3/task/{task_id}/taskflowstatus",
         json_body={k: v for k, v in body.items() if v is not None},
     )
+    verified_task = verify_task_status(client, task_id, status)
+    verified_statuses = list_statuses(client, task_id)
+    audit = audit_task(
+        client,
+        task_id,
+        expect_status_id=status.get("id"),
+        expect_stage_id=expect_stage_id,
+        expect_sfc_id=expect_sfc_id,
+        expect_tasklist_id=expect_tasklist_id,
+        expect_custom_fields=expect_custom_fields,
+    )
+    if audit.get("ok") is False:
+        failed = [item for item in audit.get("checks", []) if not item.get("ok")]
+        raise ApiError(f"状态已更新但卡片面板复核失败: {json.dumps(failed, ensure_ascii=False)}")
     return {
-        "task": summarize_task(task),
+        "task": summarize_task(task, statuses),
         "targetStatus": {"id": status.get("id"), "name": status.get("name")},
+        "verifiedTask": summarize_task(verified_task, verified_statuses),
+        "audit": audit,
         "result": result,
     }
 
 
 def cmd_claim_context(args: argparse.Namespace) -> None:
     client = TeambitionClient()
-    claim = start_task(client, args.task_id, args.status_name, args.status_id, args.note, args.yes)
+    claim = start_task(
+        client,
+        args.task_id,
+        args.status_name,
+        args.status_id,
+        args.note,
+        args.yes,
+        expect_stage_id=args.expect_stage_id,
+        expect_sfc_id=args.expect_sfc_id,
+        expect_tasklist_id=args.expect_tasklist_id,
+        expect_custom_fields=parse_expected_custom_fields(args.expect_custom_field),
+    )
     context = build_task_context(client, args.task_id, page_size=args.page_size)
     print_json({"claim": claim, "context": context})
 
@@ -1099,6 +1393,8 @@ def cmd_update_status(args: argparse.Namespace) -> None:
     task = get_task(client, args.task_id, action="更新状态")
     statuses = list_statuses(client, args.task_id)
     status = pick_status(statuses, args.status_name, args.status_id)
+    if getattr(args, "require_review_status", False):
+        ensure_finish_status_is_review(status)
     confirm_or_exit(f"将任务《{task.get('content')}》状态改为 {status.get('name') or status.get('id')}。", args.yes)
     body = {"taskflowstatusId": status.get("id"), "tfsName": args.status_name, "tfsUpdateNote": args.note}
     result = client.request(
@@ -1106,12 +1402,36 @@ def cmd_update_status(args: argparse.Namespace) -> None:
         f"/v3/task/{args.task_id}/taskflowstatus",
         json_body={k: v for k, v in body.items() if v is not None},
     )
-    print_json(result)
+    verified_task = verify_task_status(client, args.task_id, status)
+    verified_statuses = list_statuses(client, args.task_id)
+    audit = audit_task(
+        client,
+        args.task_id,
+        expect_status_id=status.get("id"),
+        expect_stage_id=args.expect_stage_id,
+        expect_sfc_id=args.expect_sfc_id,
+        expect_tasklist_id=args.expect_tasklist_id,
+        expect_custom_fields=parse_expected_custom_fields(args.expect_custom_field),
+    )
+    if audit.get("ok") is False:
+        failed = [item for item in audit.get("checks", []) if not item.get("ok")]
+        raise ApiError(f"状态已更新但卡片面板复核失败: {json.dumps(failed, ensure_ascii=False)}")
+    print_json(
+        {
+            "task": summarize_task(task, statuses),
+            "targetStatus": {"id": status.get("id"), "name": status.get("name")},
+            "verifiedTask": summarize_task(verified_task, verified_statuses),
+            "audit": audit,
+            "result": result,
+        }
+    )
 
 
 def cmd_finish(args: argparse.Namespace) -> None:
+    verification = require_finish_verification(args.verification)
     if not args.note:
-        args.note = "已处理完成，请验收。"
+        args.note = f"已处理完成，请验收。\n\n验证结果：{verification}"
+    args.require_review_status = True
     cmd_update_status(args)
 
 
@@ -1239,6 +1559,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--raw", action="store_true")
     p.set_defaults(func=cmd_get)
 
+    p = sub.add_parser("audit-task", help="只读审计任务状态和面板字段")
+    p.add_argument("--task-id", required=True)
+    p.add_argument("--expect-status-name", help="期望工作流状态名称，例如 待验收")
+    p.add_argument("--expect-status-id", help="期望工作流状态 ID")
+    p.add_argument("--expect-stage-id", help="期望阶段/泳道 ID，用于核对面板分组")
+    p.add_argument("--expect-sfc-id", help="期望场景字段配置 ID，用于核对卡片类型/视图配置")
+    p.add_argument("--expect-tasklist-id", help="期望任务列表 ID，用于核对面板列表")
+    p.add_argument("--expect-custom-field", action="append", help="期望自定义字段，格式: 字段名或字段ID=值，可重复传入")
+    p.set_defaults(func=cmd_audit_task)
+
     p = sub.add_parser("context", help="聚合 bug 上下文")
     p.add_argument("--task-id", required=True)
     p.add_argument("--page-size", type=int, default=50)
@@ -1312,6 +1642,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--status-name", default="修改中", help="优先精确匹配；找不到时匹配修复中/处理中/已认领等近义状态")
     p.add_argument("--status-id")
     p.add_argument("--note")
+    p.add_argument("--expect-stage-id", help="更新后必须匹配的阶段/泳道 ID")
+    p.add_argument("--expect-sfc-id", help="更新后必须匹配的场景字段配置 ID，用于核对卡片类型/视图配置")
+    p.add_argument("--expect-tasklist-id", help="更新后必须匹配的任务列表 ID")
+    p.add_argument("--expect-custom-field", action="append", help="更新后必须匹配的自定义字段，格式: 字段名或字段ID=值")
     p.add_argument("--yes", action="store_true")
     p.set_defaults(func=cmd_start)
 
@@ -1321,6 +1655,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--status-id")
     p.add_argument("--note")
     p.add_argument("--page-size", type=int, default=50)
+    p.add_argument("--expect-stage-id", help="更新后必须匹配的阶段/泳道 ID")
+    p.add_argument("--expect-sfc-id", help="更新后必须匹配的场景字段配置 ID，用于核对卡片类型/视图配置")
+    p.add_argument("--expect-tasklist-id", help="更新后必须匹配的任务列表 ID")
+    p.add_argument("--expect-custom-field", action="append", help="更新后必须匹配的自定义字段，格式: 字段名或字段ID=值")
     p.add_argument("--yes", action="store_true")
     p.set_defaults(func=cmd_claim_context)
 
@@ -1329,6 +1667,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--status-name")
     p.add_argument("--status-id")
     p.add_argument("--note")
+    p.add_argument("--expect-stage-id", help="更新后必须匹配的阶段/泳道 ID")
+    p.add_argument("--expect-sfc-id", help="更新后必须匹配的场景字段配置 ID，用于核对卡片类型/视图配置")
+    p.add_argument("--expect-tasklist-id", help="更新后必须匹配的任务列表 ID")
+    p.add_argument("--expect-custom-field", action="append", help="更新后必须匹配的自定义字段，格式: 字段名或字段ID=值")
     p.add_argument("--yes", action="store_true")
     p.set_defaults(func=cmd_update_status)
 
@@ -1337,6 +1679,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--status-name", default="待验收", help="优先精确匹配；找不到时匹配待测试/待确认/待审核等近义状态")
     p.add_argument("--status-id")
     p.add_argument("--note")
+    p.add_argument("--expect-stage-id", help="更新后必须匹配的阶段/泳道 ID")
+    p.add_argument("--expect-sfc-id", help="更新后必须匹配的场景字段配置 ID，用于核对卡片类型/视图配置")
+    p.add_argument("--expect-tasklist-id", help="更新后必须匹配的任务列表 ID")
+    p.add_argument("--expect-custom-field", action="append", help="更新后必须匹配的自定义字段，格式: 字段名或字段ID=值")
+    p.add_argument("--verification", required=True, help="必填。写清楚已完成的自测/验证结果，未验证不能推进到待验收")
     p.add_argument("--yes", action="store_true")
     p.set_defaults(func=cmd_finish)
 

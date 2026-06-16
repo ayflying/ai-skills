@@ -127,7 +127,7 @@ description: 技能描述
 | [baota-panel](skills/baota-panel/README.md) | 通过宝塔面板 API 管理服务器资源 | `skills/baota-panel/` |
 | [casdoor-integration](skills/casdoor-integration/README.md) | 通用的 Casdoor SSO/IAM 集成指南 | `skills/casdoor-integration/` |
 | [gpt-image](skills/gpt-image/README.md) | OpenAI GPT Image 系列画图与图片编辑 | `skills/gpt-image/` |
-| [teambition-bug](skills/teambition-bug/README.md) | 通过 Teambition 官方 OpenAPI 读取、留言、识别截图并推进 bug 到修改中/待验收 | `skills/teambition-bug/` |
+| [teambition-bug](skills/teambition-bug/README.md) | 通过 Teambition 官方 OpenAPI 读取、留言、识别截图、推进状态并审计看板字段 | `skills/teambition-bug/` |
 
 ## 开发新技能
 
