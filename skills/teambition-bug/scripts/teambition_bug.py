@@ -229,7 +229,7 @@ class TeambitionClient:
             "Authorization": f"Bearer {self.token}",
             "X-Tenant-Id": self.tenant_id,
             "X-Tenant-Type": "organization",
-            "Content-Type": "application/json",
+            "Content-Type": "application/json; charset=utf-8",
         }
 
     def request(
@@ -239,14 +239,22 @@ class TeambitionClient:
         *,
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        files: Any = None,
+        data: Any = None,
     ) -> Any:
         url = self.gateway + (path if path.startswith("/") else f"/{path}")
+        request_headers = {**self.headers(), **(headers or {})}
+        if files or data:
+            request_headers.pop("Content-Type", None)
         response = requests.request(
             method,
             url,
-            headers=self.headers(),
+            headers=request_headers,
             params={k: v for k, v in (params or {}).items() if v is not None},
             json=json_body,
+            files=files,
+            data=data,
             timeout=30,
         )
         try:
@@ -294,6 +302,20 @@ class TeambitionClient:
         if not user_id:
             raise ApiError("当前用户信息中没有 userId，无法校验第一执行者。")
         return user_id
+
+    def upload_attachment(self, file_path: str, *, file_name: str | None = None) -> dict[str, Any]:
+        from pathlib import Path
+
+        path = Path(file_path)
+        if not path.exists():
+            raise ConfigError(f"文件不存在: {file_path}")
+        if not path.is_file():
+            raise ConfigError(f"不是文件: {file_path}")
+
+        name = file_name or path.name
+        with path.open("rb") as f:
+            files = {"file": (name, f, "application/octet-stream")}
+            return self.request("POST", "/v3/attachments/upload", files=files)
 
 
 def extract_links_from_html(text: str) -> dict[str, list[str]]:
@@ -1065,10 +1087,25 @@ def cmd_download_images(args: argparse.Namespace) -> None:
 def cmd_comment(args: argparse.Namespace) -> None:
     client = TeambitionClient()
     get_task(client, args.task_id, action="留言")
-    confirm_or_exit(f"将向任务 {args.task_id} 留言。", args.yes)
+    file_tokens: list[str] = []
+    if args.image:
+        for img_path in args.image:
+            upload_result = client.upload_attachment(img_path)
+            file_token = upload_result.get("fileToken") or upload_result.get("result", {}).get("fileToken")
+            if not file_token:
+                raise ApiError(f"图片上传失败，未返回 fileToken: {json.dumps(upload_result, ensure_ascii=False)}")
+            file_tokens.append(str(file_token))
+
+    message_parts = [f"将向任务 {args.task_id} 留言"]
+    if file_tokens:
+        message_parts.append(f"（附带 {len(file_tokens)} 张图片）")
+    confirm_or_exit("".join(message_parts) + "。", args.yes)
+
     body: dict[str, Any] = {"content": args.content, "renderMode": args.render_mode}
     if args.mention_user_id:
         body["mentionUserIds"] = args.mention_user_id
+    if file_tokens:
+        body["fileTokens"] = file_tokens
     result = client.request("POST", f"/v3/task/{args.task_id}/comment", json_body=body)
     print_json(result)
 
@@ -1606,6 +1643,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--content", required=True)
     p.add_argument("--render-mode", default="markdown")
     p.add_argument("--mention-user-id", action="append")
+    p.add_argument("--image", action="append", help="上传图片的本地路径，可重复传入多张")
     p.add_argument("--yes", action="store_true")
     p.set_defaults(func=cmd_comment)
 
