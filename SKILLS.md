@@ -48,6 +48,9 @@ ai-skills/
         ├── .env.example   # 配置模板
         ├── references/    # API 参考
         └── scripts/       # Python 脚本
+    └── image-recognition/ # 图片识别省 token 技能
+        ├── SKILL.md       # 技能核心文档
+        └── scripts/       # Python 脚本
 ```
 
 ## 技能详情
@@ -188,6 +191,19 @@ ai-skills/
 
 **使用方式**:
 详见 `skills/teambition-bug/SKILL.md`
+
+### image-recognition
+
+**描述**: 把图片识别交给外部 OpenAI 兼容视觉模型，只返回精简中文文字描述，避免大量图片占用上下文、被反复压缩消耗 token。
+
+**功能**:
+- 调用 OpenAI 兼容 `/chat/completions` 视觉接口识别本地或远程图片
+- 默认输出通用中文描述，支持 `-q` 对图片提问或 OCR
+- 支持多图按序识别，输出纯文字而非图片数据
+- 配置只读系统环境变量（无 `.env`），首次缺 Key/地址/模型时引导用户输入
+
+**使用方式**:
+详见 `skills/image-recognition/SKILL.md`
 
 ## 如何添加新技能
 

@@ -18,6 +18,7 @@
 | [ollama](skills/ollama/SKILL.md) | 调用 Ollama 本地模型 (qwen3.5:9b) | `skills/ollama/` |
 | [gitea-weekly-report](skills/gitea-weekly-report/SKILL.md) | 生成一个或多个 Gitea 组织的周报，遍历全部分支并转换技术提交为业务功能点 | `skills/gitea-weekly-report/` |
 | [teambition-bug](skills/teambition-bug/SKILL.md) | 通过 Teambition 官方 OpenAPI 读取、留言、识别截图、推进状态并审计看板字段 | `skills/teambition-bug/` |
+| [image-recognition](skills/image-recognition/SKILL.md) | 图片识别省 token，调用 OpenAI 兼容视觉模型只返回精简中文描述 | `skills/image-recognition/` |
 
 ## 使用方式
 
