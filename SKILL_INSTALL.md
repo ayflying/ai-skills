@@ -128,6 +128,7 @@ description: 技能描述
 | [casdoor-integration](skills/casdoor-integration/README.md) | 通用的 Casdoor SSO/IAM 集成指南 | `skills/casdoor-integration/` |
 | [gpt-image](skills/gpt-image/README.md) | OpenAI GPT Image 系列画图与图片编辑 | `skills/gpt-image/` |
 | [teambition-bug](skills/teambition-bug/README.md) | 通过 Teambition 官方 OpenAPI 读取、留言、识别截图、推进状态并审计看板字段 | `skills/teambition-bug/` |
+| [website-function-mapper](skills/website-function-mapper/README.md) | 用 Playwright 安全侦察网站功能、动态表单、接口线索和文档说明，输出复刻规格 | `skills/website-function-mapper/` |
 
 ## 开发新技能
 

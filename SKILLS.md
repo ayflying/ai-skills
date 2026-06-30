@@ -51,6 +51,11 @@ ai-skills/
     └── image-recognition/ # 图片识别省 token 技能
         ├── SKILL.md       # 技能核心文档
         └── scripts/       # Python 脚本
+    └── website-function-mapper/ # 网站功能复刻侦察技能
+        ├── SKILL.md       # 技能核心文档
+        ├── README.md      # 技能说明
+        ├── requirements.txt # Python 依赖
+        └── scripts/       # Playwright 脚本
 ```
 
 ## 技能详情
@@ -205,6 +210,21 @@ ai-skills/
 
 **使用方式**:
 详见 `skills/image-recognition/SKILL.md`
+
+### website-function-mapper
+
+**描述**: 用 Playwright 安全侦察网站功能、动态表单、接口线索和文档说明，输出给 AI 复刻功能用的 Markdown 与 JSON 报告。
+
+**功能**:
+- 模拟浏览器访问指定网址，支持等待用户登录、保存登录态和注入 cookie
+- 扫描同域页面、导航、按钮、表单、弹窗、抽屉、表格和功能入口
+- 记录多级表单、动态字段、选项联动、字段约束、校验提示和提交按钮启用条件
+- 自动发现并读取帮助、手册、开发者文档、API、Swagger/OpenAPI 等说明入口
+- 汇总 XHR/fetch 接口方法、路径、状态码、请求字段名和响应字段名，并自动脱敏
+- 默认安全侦察，不提交表单，不执行删除、支付、发送、发布等高风险动作
+
+**使用方式**:
+详见 `skills/website-function-mapper/SKILL.md`
 
 ## 如何添加新技能
 

@@ -25,6 +25,10 @@ data/
 logs/
 browser-profile/
 storageState.json
+*storageState.json
+cookies.json
+trace.zip
+playwright-report/
 
 # Build output
 dingtalk-agent.exe
@@ -55,6 +59,7 @@ __pycache__/
 output*.jpg
 output*.png
 outputs/
+skills/*/outputs/
 .ruff_cache/
 
 # Windows special files
