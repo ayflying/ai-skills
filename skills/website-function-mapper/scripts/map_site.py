@@ -21,6 +21,10 @@ DOC_TEXT = re.compile(
     r"(帮助|手册|文档|说明|指南|开发者|接口|api|swagger|openapi|docs|doc|help|manual|guide|faq|reference)",
     re.I,
 )
+DOC_FRESHNESS_TEXT = re.compile(
+    r"(最新|新版|当前|现行|更新|修订|发布|版本|latest|current|new|updated|release|version|v\d+(?:\.\d+)*)",
+    re.I,
+)
 LOGIN_TEXT = re.compile(r"(登录|登陆|sign in|login|账号|密码|验证码)", re.I)
 SENSITIVE_HEADER = re.compile(r"(authorization|cookie|token|secret|key|set-cookie)", re.I)
 
@@ -54,6 +58,7 @@ class SiteMapper:
             "target": config.url,
             "generated_at": datetime.now().isoformat(timespec="seconds"),
             "mode": "safe reconnaissance",
+            "source_priority": "actual website behavior is authoritative; documents are reference only",
             "pages": [],
             "documents": [],
             "api_endpoints": [],
@@ -394,7 +399,8 @@ class SiteMapper:
 
     async def _collect_doc_candidates(self, page: Page) -> list[dict[str, Any]]:
         links = await self._collect_links(page)
-        return [link for link in links if DOC_TEXT.search(" ".join([link.get("text", ""), link.get("href", "")]))][:50]
+        candidates = [link for link in links if DOC_TEXT.search(" ".join([link.get("text", ""), link.get("href", "")]))]
+        return sorted(candidates, key=self._document_candidate_score, reverse=True)[:50]
 
     async def _scan_document(self, context: BrowserContext, href: str, label: str) -> None:
         clean = self._clean_url(href)
@@ -409,6 +415,9 @@ class SiteMapper:
                 "label": label,
                 "title": await page.title(),
                 "kind": self._document_kind(clean, text),
+                "authority": "reference_only",
+                "conflict_policy": "If documentation conflicts with actual website behavior, use actual website behavior.",
+                "freshness": self._document_freshness(clean, label, await page.title(), text),
                 "summary_text": text[:8000],
                 "links": await self._collect_links(page),
             }
@@ -744,6 +753,7 @@ class SiteMapper:
             f"- 目标: {self.report['target']}",
             f"- 生成时间: {self.report['generated_at']}",
             f"- 模式: 安全侦察，不提交表单，不执行危险动作",
+            f"- 信息优先级: 网站实际操作结果为准；手册/API 文档只作参考，若冲突以实际网页行为为准",
             "",
             "## 验收结果",
             f"- 状态: {self.report['acceptance'].get('status')}",
@@ -811,13 +821,18 @@ class SiteMapper:
                         f"选择 {option.get('label') or option.get('value')} 后 changed={branch.get('changed')}"
                     )
         lines.extend(["", "## 文档与 API 说明"])
+        lines.append("")
+        lines.append("> 文档可能过期。请优先使用带“最新/当前版本/更新日期”等新鲜度信号的文档；文档与实际操作不一致时，以页面扫描到的真实表单、按钮、流程和接口行为为准。")
         for doc in self.report["documents"][:80]:
+            freshness = doc.get("freshness") or {}
             lines.extend(
                 [
                     "",
                     f"### {doc.get('title') or doc.get('label') or doc.get('url')}",
                     f"- URL: {doc.get('url')}",
                     f"- 类型: {doc.get('kind', 'document')}",
+                    f"- 权威性: 仅参考；冲突时以网站实际操作为准",
+                    f"- 新鲜度信号: {', '.join(freshness.get('signals', [])) or '未发现'}；日期: {', '.join(freshness.get('dates', [])) or '未发现'}；评分: {freshness.get('score', 0)}",
                     f"- 摘要: {(doc.get('summary_text') or doc.get('error') or '')[:1000]}",
                 ]
             )
@@ -844,6 +859,47 @@ class SiteMapper:
         if re.search(r"(faq|常见问题)", target, re.I):
             return "faq"
         return "manual"
+
+    def _document_candidate_score(self, link: dict[str, Any]) -> int:
+        target = " ".join([link.get("text", ""), link.get("href", "")])
+        score = 0
+        if DOC_FRESHNESS_TEXT.search(target):
+            score += 20
+        if re.search(r"(swagger|openapi|api|接口)", target, re.I):
+            score += 10
+        if re.search(r"(old|legacy|deprecated|archive|历史|旧版|废弃|归档)", target, re.I):
+            score -= 20
+        return score
+
+    def _document_freshness(self, url: str, label: str, title: str, text: str) -> dict[str, Any]:
+        target = "\n".join([url, label, title, text[:12000]])
+        signals = sorted(set(match.group(0) for match in DOC_FRESHNESS_TEXT.finditer(target)))[:30]
+        dates = sorted(
+            set(
+                re.findall(
+                    r"(20\d{2}[-/.年](?:0?[1-9]|1[0-2])[-/.月](?:0?[1-9]|[12]\d|3[01])日?|20\d{2}[-/.年](?:0?[1-9]|1[0-2])月?|v\d+(?:\.\d+){1,3})",
+                    target,
+                    flags=re.I,
+                )
+            )
+        )[:30]
+        stale_markers = sorted(
+            set(
+                re.findall(
+                    r"(旧版|历史|废弃|归档|不再维护|deprecated|legacy|archive|old)",
+                    target,
+                    flags=re.I,
+                )
+            )
+        )[:20]
+        score = len(signals) * 2 + len(dates) * 3 - len(stale_markers) * 5
+        return {
+            "score": score,
+            "signals": signals,
+            "dates": dates,
+            "stale_markers": stale_markers,
+            "note": "Prefer the newest/current documentation, but actual website behavior remains authoritative.",
+        }
 
     def _same_host(self, url: str) -> bool:
         parsed = urlparse(url)
