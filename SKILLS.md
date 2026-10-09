@@ -1,5 +1,7 @@
 # AI Skills 技能列表
 
+当前包含 12 个技能，以 `skills/*/SKILL.md` 为准。统一安装流程见 [SKILL_INSTALL.md](SKILL_INSTALL.md)，开发规则见 [AGENTS.md](AGENTS.md)。下方结构列出主要资源，不是每个技能都必须具备的模板。
+
 ## 技能目录结构
 
 ```
@@ -228,10 +230,11 @@ ai-skills/
 
 ## 如何添加新技能
 
-1. 在 `skills/` 目录下创建新的技能目录
-2. 添加技能代码和文档
-3. 更新本文件（SKILLS.md）
-4. 提交 Pull Request
+1. 在 `skills/` 目录下创建与技能名称一致的新目录
+2. 添加带 YAML frontmatter、触发条件和安装说明的 `SKILL.md`，按需添加代码、测试及参考资料
+3. README 可选；已有 README 同步维护，避免重复文档
+4. 同步更新本文件和 `README.md`；安装方式或前置条件变化时更新 `SKILL_INSTALL.md`
+5. 验证链接、安装命令和相关测试，检查差异后提交或发起 Pull Request
 
 ## 许可证
 

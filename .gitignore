@@ -30,9 +30,6 @@ cookies.json
 trace.zip
 playwright-report/
 
-# Build output
-dingtalk-agent.exe
-
 # IDE
 .idea/
 .vscode/

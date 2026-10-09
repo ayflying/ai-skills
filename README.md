@@ -4,7 +4,7 @@
 
 ## 技能列表
 
-点击技能名称查看详细说明和安装方法：
+当前包含 **12 个独立技能**，以 Python 脚本、参考文档和浏览器资源为主，不存在统一的应用启动入口。点击技能名称查看详细说明和安装方法：
 
 | 技能名称 | 描述 | 路径 |
 |----------|------|------|
@@ -23,11 +23,22 @@
 
 ## 使用方式
 
-每个技能都是独立的，可以单独使用。请点击上方技能名称查看详细的安装和使用说明。
+```bash
+# 查看可用技能
+npx skills add ayflying/ai-skills --list
+# 安装指定技能
+npx skills add ayflying/ai-skills --skill opencode-api
+# 安装全部技能
+npx skills add ayflying/ai-skills
+```
+
+安装后按各技能说明准备依赖、配置及外部服务；安装技能不等于已配置运行环境。完整流程见 [安装说明](SKILL_INSTALL.md)。
 
 ## 开发说明
 
-本仓库包含我编写的所有 AI 技能。详细开发说明请查看 [SKILL_INSTALL.md](SKILL_INSTALL.md)
+- [技能清单](SKILLS.md)：目录结构与能力说明。
+- [开发指南](AGENTS.md)：代码、测试、技能格式及文档同步规则。
+- [安全说明](SECURITY.md)：凭证、登录态和高风险操作要求。
 
 ## 许可证
 

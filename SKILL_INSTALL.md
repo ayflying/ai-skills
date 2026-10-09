@@ -1,156 +1,120 @@
 # 技能标准化安装说明
 
-## 概述
+## 1. 概述
 
-这是我编写的 AI 技能集合仓库，遵循 [Agent Skills 规范](https://agentskills.io)，支持使用 `skills` CLI 进行标准化安装。
+本仓库是遵循 [Agent Skills 规范](https://agentskills.io)的独立技能集合。技能安装用于让支持该规范的 Agent 加载任务说明和资源，不等于已安装 Python 依赖、配置账号或启动外部服务。
 
-## 快速开始
+## 2. 安装技能
 
-### 1. 安装 skills CLI
-
-如果你还没有安装 `skills` CLI，首先安装它：
+需要本机可运行 Node.js、npm 和 `npx`。使用 `npx skills` 即可，无需预先全局安装 CLI。
 
 ```bash
-npm install -g skills-cli
-# 或者使用 npx（无需安装）
-```
+# 列出仓库可用技能
+npx skills add ayflying/ai-skills --list
 
-### 2. 安装技能
+# 安装一个技能
+npx skills add ayflying/ai-skills --skill opencode-api
 
-#### 安装所有技能
-```bash
+# 安装全部技能
 npx skills add ayflying/ai-skills
 ```
 
-#### 安装特定技能（推荐）
-```bash
-npx skills add ayflying/ai-skills --skill dingtalk-agent
-```
+按 CLI 提示选择目标 Agent 和安装范围。OpenCode、Claude Code、Cursor 等工具的支持情况及加载路径以当前 [Skills CLI 文档](https://skills.sh)和目标 Agent 文档为准。
 
-#### 列出可用技能
-```bash
-npx skills add ayflying/ai-skills --list
-```
+## 3. 当前技能
 
-### 3. 支持的 Agent
+以下 12 个技能均以各自 `SKILL.md` 为安装和使用入口：
 
-- OpenCode
-- Claude Code
-- Cursor
-- 以及其他 39+ 个 Agent
-
-## dingtalk-agent 技能详细安装指南
-
-### 前置要求
-
-1. **Go 1.24.1+** - 用于运行 Go 程序
-2. **钉钉企业应用** - 需要开启 Stream 模式
-3. **OpenCode 服务器** - 运行在端口 9090
-
-### 安装步骤
-
-#### 步骤 1: 安装技能
-```bash
-npx skills add ayflying/ai-skills --skill dingtalk-agent
-```
-
-#### 步骤 2: 配置环境变量
-技能安装后，会创建 `skills/dingtalk-agent/.env.example` 文件。复制并配置：
-
-```bash
-cd skills/dingtalk-agent
-cp .env.example .env
-```
-
-编辑 `.env` 文件：
-```env
-# 钉钉应用配置
-CLIENT_ID=your-client-id
-CLIENT_SECRET=your-client-secret
-
-# OpenCode 模型配置（可选）
-CURRENT_MODEL=opencode/minimax-m2.5-free
-```
-
-#### 步骤 3: 获取钉钉配置
-1. 登录 [钉钉开放平台](https://open.dingtalk.com)
-2. 进入"应用开发" → "企业内部应用"
-3. 创建或选择你的应用
-4. 在"应用信息"中查看 `Client ID` 和 `Client Secret`
-5. 在"权限管理"中开通"Stream模式"
-
-#### 步骤 4: 安装依赖并运行
-```bash
-# 安装 Go 依赖
-go mod tidy
-
-# 构建程序
-go build -o dingtalk-agent.exe main.go
-
-# 运行程序
-./dingtalk-agent.exe
-```
-
-### 使用方式
-
-安装并配置完成后，在钉钉群中发送以下命令：
-
-| 命令 | 说明 |
+| 技能 | 用途 |
 |------|------|
-| `/help` | 显示帮助 |
-| `/status` | 查看当前模式和状态 |
-| `/opencode <任务>` | 进入 OpenCode 模式并执行任务 |
-| `/exit` | 退出 OpenCode 模式 |
+| [opencode-api](skills/opencode-api/SKILL.md) | 连接 OpenCode 服务器执行 AI 任务 |
+| [minimax-api](skills/minimax-api/SKILL.md) | MiniMax 文本、语音、图像、视频与音乐 API |
+| [baota-panel](skills/baota-panel/SKILL.md) | 宝塔面板资源管理 |
+| [casdoor-integration](skills/casdoor-integration/SKILL.md) | Casdoor 单点登录与权限集成 |
+| [wechat-bot](skills/wechat-bot/SKILL.md) | 微信个人机器人 |
+| [jimeng-ai-generator](skills/jimeng-ai-generator/SKILL.md) | 即梦批量生成任务自动化 |
+| [gpt-image](skills/gpt-image/SKILL.md) | GPT Image 图片生成与编辑 |
+| [ollama](skills/ollama/SKILL.md) | Ollama 本地模型调用 |
+| [gitea-weekly-report](skills/gitea-weekly-report/SKILL.md) | Gitea 项目工作周报 |
+| [teambition-bug](skills/teambition-bug/SKILL.md) | Teambition 缺陷查询与处理 |
+| [image-recognition](skills/image-recognition/SKILL.md) | 图片识别、OCR 与截图理解 |
+| [website-function-mapper](skills/website-function-mapper/SKILL.md) | 网站功能侦察与复刻验收 |
 
-## 技能结构
+详细能力和目录说明见 [SKILLS.md](SKILLS.md)。技能增减时同步维护本表与 [README.md](README.md)。
 
-每个技能必须包含 `SKILL.md` 文件，格式如下：
+## 4. 安装后的准备
+
+先读取所选技能的 `SKILL.md`，再按其要求准备运行环境。各技能独立，不存在适用于全部技能的统一启动命令。
+
+### Python 依赖
+
+Python 技能通常要求 Python 3.10+，具体要求以技能说明为准。有 `requirements.txt` 的技能，在对应目录运行：
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+没有依赖清单时按技能说明安装，不能假定 `requests` 足以运行所有技能。浏览器类技能还可能需要扩展、Playwright 或浏览器安装步骤。
+
+### 配置与服务
+
+- 仅在提供 `.env.example` 且技能说明要求时复制为 `.env`，填入本机配置。
+- `image-recognition` 使用系统环境变量，不统一改成 `.env`。
+- OpenCode、Ollama、宝塔等技能需准备对应的服务地址和授权。
+- 仅文档型技能不一定需要执行脚本。
+- 不把凭证、浏览器登录态或真实业务数据写入可提交的模板，详见 [SECURITY.md](SECURITY.md)。
+
+## 5. 开发新技能
+
+```text
+skills/<skill-name>/
+├── SKILL.md          # 必须：触发条件、执行规则与安装说明
+├── README.md         # 可选：已有则同步维护
+├── scripts/          # 可选：脚本与测试
+├── references/       # 可选：参考资料
+└── assets/           # 可选：模板和资源
+```
+
+SKILL 必须有 YAML frontmatter：
 
 ```yaml
 ---
 name: skill-name
-description: 技能描述
+description: |
+  描述技能做什么。
+  Use when: (1) 触发条件一 (2) 触发条件二
 ---
-
-# 技能内容...
-
-## 使用说明
-...
 ```
 
-## 当前技能
+正文写明实际技能名对应的安装命令：
 
-| 技能名称 | 描述 | 路径 |
-|----------|------|------|
-| [dingtalk-agent](skills/dingtalk-agent/README.md) | 钉钉机器人集成 OpenCode AI | `skills/dingtalk-agent/` |
-| [opencode-api](skills/opencode-api/SKILL.md) | 连接 OpenCode 服务器执行 AI 任务 | `skills/opencode-api/` |
-| [baota-panel](skills/baota-panel/README.md) | 通过宝塔面板 API 管理服务器资源 | `skills/baota-panel/` |
-| [casdoor-integration](skills/casdoor-integration/README.md) | 通用的 Casdoor SSO/IAM 集成指南 | `skills/casdoor-integration/` |
-| [gpt-image](skills/gpt-image/README.md) | OpenAI GPT Image 系列画图与图片编辑 | `skills/gpt-image/` |
-| [teambition-bug](skills/teambition-bug/README.md) | 通过 Teambition 官方 OpenAPI 读取、留言、识别截图、推进状态并审计看板字段 | `skills/teambition-bug/` |
-| [website-function-mapper](skills/website-function-mapper/README.md) | 用 Playwright 安全侦察网站功能、动态表单、接口线索和文档说明，输出复刻规格 | `skills/website-function-mapper/` |
+```bash
+npx skills add ayflying/ai-skills --skill <skill-name>
+```
 
-## 开发新技能
+开发后同步仓库清单，核对链接、命令和测试。完整规范见 [AGENTS.md](AGENTS.md)。
 
-1. 在 `skills/` 目录下创建新技能目录
-2. 添加 `SKILL.md` 文件（遵循 YAML frontmatter 格式）
-3. 更新 `SKILL_INSTALL.md` 中的技能列表
-4. 提交到 GitHub
+## 6. 故障排除
 
-## 故障排除
+### 找不到技能
 
-### "No skills found" 错误
-- 确保仓库中包含有效的 `SKILL.md` 文件
-- 检查 `SKILL.md` 是否包含 `name` 和 `description` 字段
+- 检查 `skills/<skill-name>/SKILL.md` 是否存在。
+- 检查 frontmatter 的 `name`、`description` 和技能名。
+- 用 `--list` 核对可用名称，不使用不存在的历史技能名。
 
-### 技能未加载
-- 验证技能已安装到正确路径
-- 检查 Agent 的文档了解技能加载要求
+### 已安装但未加载
 
-### 权限错误
-- 确保有写入目标目录的权限
+- 检查 CLI 所选 Agent 和安装范围。
+- 根据目标 Agent 文档确认技能加载路径和是否需要重启会话。
+- 安装成功不代表依赖和外部服务已经配置完成。
 
-## 参考资料
+### 脚本运行失败
+
+- 核对 Python 版本、依赖、参数、环境变量及服务连通性。
+- 权限错误时确认目标目录和账号权限，不盲目提升权限。
+- 分享报错前移除 Token、密码、登录态和私人业务数据。
+
+## 7. 参考资料
 
 - [Agent Skills 规范](https://agentskills.io)
 - [Skills CLI 文档](https://skills.sh)
