@@ -1146,7 +1146,6 @@ def cmd_reply(args: argparse.Namespace) -> None:
     if args.reply_to:
         content = f"回复动态 {args.reply_to}：\n\n{content}"
     args.content = content
-    args.render_mode = args.render_mode
     cmd_comment(args)
 
 
