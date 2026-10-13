@@ -1084,6 +1084,20 @@ def cmd_download_images(args: argparse.Namespace) -> None:
     )
 
 
+def resolve_comment_render_mode(explicit: str | None, mention_user_ids: list[str] | None) -> str:
+    """决定评论的 renderMode。
+
+    - 调用方显式传了 --render-mode 时以调用方为准；
+    - 否则：带 `--mention-user-id` 用 `text`。官方网页客户端发评论只用 text（富文本走 rtf），
+      从不用 markdown；实测确认能派发 @ 提醒的跨账号评论也是 text，而历史「@ 了但收不到」的
+      评论全部是 markdown。通知正确性优先于 markdown 排版。
+    - 不带 mention 时保持 markdown，排版与历史一致。
+    """
+    if explicit:
+        return explicit
+    return "text" if mention_user_ids else "markdown"
+
+
 def cmd_comment(args: argparse.Namespace) -> None:
     client = TeambitionClient()
     get_task(client, args.task_id, action="留言")
@@ -1101,12 +1115,29 @@ def cmd_comment(args: argparse.Namespace) -> None:
         message_parts.append(f"（附带 {len(file_tokens)} 张图片）")
     confirm_or_exit("".join(message_parts) + "。", args.yes)
 
-    body: dict[str, Any] = {"content": args.content, "renderMode": args.render_mode}
+    render_mode = resolve_comment_render_mode(args.render_mode, args.mention_user_id)
+    body: dict[str, Any] = {"content": args.content, "renderMode": render_mode}
     if args.mention_user_id:
         body["mentionUserIds"] = args.mention_user_id
+        # 关键：没有 isDingtalkPM 时，Teambition 只把 @ 当作富文本 mentions 存下来，
+        # 收件人收不到任何提醒（钉钉消息/站内通知都不发）。这是「@ 了但对方收不到」的根因。
+        body["isDingtalkPM"] = True
+        if "@" not in args.content:
+            print(
+                "警告：已传 --mention-user-id，但 content 里没有 `@姓名` 文本。"
+                "Teambition 会按 mentions 映射渲染，但对方看到的正文里不会有被 @ 的名字，"
+                "且部分场景不会派发提醒。建议在 content 里显式写上 `@对方姓名`。",
+                file=sys.stderr,
+            )
     if file_tokens:
         body["fileTokens"] = file_tokens
-    result = client.request("POST", f"/v3/task/{args.task_id}/comment", json_body=body)
+    # 写接口必须显式带上操作人；不带时服务端按「系统调用」处理，同样不派发 @ 提醒。
+    result = client.request(
+        "POST",
+        f"/v3/task/{args.task_id}/comment",
+        headers={"x-operator-id": client.current_user_id()},
+        json_body=body,
+    )
     print_json(result)
 
 
@@ -1136,14 +1167,14 @@ def cmd_quick_reply(args: argparse.Namespace) -> None:
     if args.extra:
         content = f"{content}\n\n{args.extra}"
     args.content = content
-    args.render_mode = "markdown"
+    args.render_mode = None
     args.mention_user_id = args.mention_user_id
     cmd_comment(args)
 
 
 def cmd_ask(args: argparse.Namespace) -> None:
     args.content = args.question
-    args.render_mode = "markdown"
+    args.render_mode = None
     args.mention_user_id = args.mention_user_id
     cmd_comment(args)
 
@@ -1641,7 +1672,11 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("comment", help="评论任务")
     p.add_argument("--task-id", required=True)
     p.add_argument("--content", required=True)
-    p.add_argument("--render-mode", default="markdown")
+    p.add_argument(
+        "--render-mode",
+        default=None,
+        help="不传时自动选择：带 --mention-user-id 用 text（与官方客户端一致，保证 @ 提醒能派发），否则用 markdown",
+    )
     p.add_argument("--mention-user-id", action="append")
     p.add_argument("--image", action="append", help="上传图片的本地路径，可重复传入多张")
     p.add_argument("--yes", action="store_true")
@@ -1651,7 +1686,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--task-id", required=True)
     p.add_argument("--content", required=True)
     p.add_argument("--reply-to")
-    p.add_argument("--render-mode", default="markdown")
+    p.add_argument(
+        "--render-mode",
+        default=None,
+        help="不传时自动选择：带 --mention-user-id 用 text，否则用 markdown",
+    )
     p.add_argument("--mention-user-id", action="append")
     p.add_argument("--yes", action="store_true")
     p.set_defaults(func=cmd_reply)

@@ -97,6 +97,27 @@ class TeambitionBugHelperTests(unittest.TestCase):
     def test_normalize_check_value_handles_structured_values(self) -> None:
         self.assertEqual(teambition_bug.normalize_check_value(["Bug"]), '["Bug"]')
 
+    def test_comment_render_mode_uses_text_when_mentioning(self) -> None:
+        self.assertEqual(teambition_bug.resolve_comment_render_mode(None, ["u1"]), "text")
+        self.assertEqual(teambition_bug.resolve_comment_render_mode(None, None), "markdown")
+        self.assertEqual(teambition_bug.resolve_comment_render_mode(None, []), "markdown")
+
+    def test_comment_render_mode_lets_explicit_value_win(self) -> None:
+        self.assertEqual(teambition_bug.resolve_comment_render_mode("markdown", ["u1"]), "markdown")
+
+    def test_comment_parser_defaults_render_mode_to_auto(self) -> None:
+        args = teambition_bug.build_parser().parse_args(
+            ["comment", "--task-id", "t1", "--content", "正文", "--mention-user-id", "u1", "--yes"]
+        )
+        self.assertIsNone(args.render_mode)
+
+    def test_quick_reply_and_ask_keep_render_mode_auto(self) -> None:
+        parser = teambition_bug.build_parser()
+        quick = parser.parse_args(["quick-reply", "--task-id", "t1", "--template", "fixed", "--yes"])
+        ask = parser.parse_args(["ask", "--task-id", "t1", "--question", "怎么复现？", "--yes"])
+        self.assertFalse(hasattr(quick, "render_mode") and quick.render_mode)
+        self.assertFalse(hasattr(ask, "render_mode") and ask.render_mode)
+
 
 if __name__ == "__main__":
     unittest.main()

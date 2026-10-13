@@ -43,12 +43,26 @@
 
 | 能力 | 方法和路径 | 请求体 |
 | --- | --- | --- |
-| 评论任务 | `POST /v3/task/{taskId}/comment` | `content`、`renderMode`、`fileTokens`、`mentionUserIds` |
+| 评论任务 | `POST /v3/task/{taskId}/comment` | `content`、`renderMode`、`fileTokens`、`mentionUserIds`、`isDingtalkPM` |
 | 查询可用状态 | `GET /v3/task/{taskId}/tfs` | 无 |
 | 更新任务状态 | `PUT /v3/task/{taskId}/taskflowstatus` | `taskflowstatusId` 或 `tfsName`，可带 `tfsUpdateNote` |
 
 公开文档未暴露单独“回复某条任务评论”的接口；如需回复某条动态，建议在 `POST /v3/task/{taskId}/comment` 的内容中引用动态或评论 ID。
 本技能的 `reply` 命令采用该策略，`quick-reply` 命令则使用内置模板创建普通评论。
+
+### @ 提醒（收不到通知的根因）
+
+只传 `mentionUserIds` 并不会让对方收到提醒：Teambition 只会把 `@` 当作富文本 `mentions` 映射存进评论，收件人既没有钉钉消息也没有站内通知。要让提醒真正派发，必须同时满足：
+
+1. `mentions` 映射里有对方的**真实 userId**（用 `GET /v3/organization/{orgId}/members` 或成员搜索接口取，不要猜）；
+2. 请求体带 `isDingtalkPM: true`（`is DingTalk PM`，即「发钉钉私信通知」）；
+3. 写请求显式带 `x-operator-id: <当前用户 userId>`，否则服务端把这次调用当成系统操作，同样不派发通知；
+4. `content` 正文里显式写出 `@对方姓名` 文本，界面上才会显示成可点的 @ 块；
+5. `renderMode` 用 `text`。官方客户端（网页版）发评论只用 `text`（富文本走 `rtf`），从不用 `markdown`；`markdown` 只出现在「项目公告」这类非评论场景。历史故障评论全部是 `markdown`，而唯一实测确认送达的跨账号评论是 `text`。
+
+本技能的 `comment` / `reply` / `ask` / `quick-reply` 在传 `--mention-user-id` 时会自动补上 `isDingtalkPM`、`x-operator-id`，并把 `renderMode` 自动切到 `text`；不传 `--mention-user-id` 时仍是 `markdown`。正文里的 `@姓名` 仍需调用方自己写。如显式传 `--render-mode markdown`，以调用方为准（该组合未验证能派发提醒）。
+
+实测依据（任务 `6acc5eb750a75311c36f7a29` 通知测试）：只带 `mentionUserIds` 的评论（`SELF-AT-01`、以及 `outputs/goal-task*.json` 里发给「解汕汕」的历史评论）全部没有触发提醒；补齐上述参数的跨账号评论（`API-AT-03`，`@廖玉龙`，`renderMode: text`）对方当场回复「接口通知收到」。仅 `@自己` 时 Teambition 会直接丢弃 mentions，无法用于自测。
 
 ## 常用更新
 
