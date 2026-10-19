@@ -1,7 +1,7 @@
 ---
 name: gpt-image
 description: |
-  OpenAI GPT Image 系列画图、图生图与图片编辑技能，兼容 gpt-image-1、gpt-image-1.5、gpt-image-2 等版本，封装文生图、参考图生成、局部编辑、尺寸/质量/格式参数和结果落盘流程。Use when: (1) 需要调用 GPT Image 系列模型生成图片 (2) 需要使用 gpt-image-2 图生图或参考图生成新图 (3) 需要在不同 GPT Image 版本之间切换测试 (4) 需要根据一张或多张参考图进行图片编辑或重绘 (5) 需要输出 png/jpeg/webp 图片文件 (6) 需要处理 GPT Image API 的 base64 图片响应
+  OpenAI GPT Image 系列画图、图生图与图片编辑技能，默认使用 gpt-image-2.5-flare，兼容 gpt-image-1、gpt-image-1.5、gpt-image-2 等版本，封装文生图、参考图生成、局部编辑、尺寸/质量/格式参数和结果落盘流程。Use when: (1) 需要调用 GPT Image 系列模型生成图片 (2) 需要使用 gpt-image-2 图生图或参考图生成新图 (3) 需要在不同 GPT Image 版本之间切换测试 (4) 需要根据一张或多张参考图进行图片编辑或重绘 (5) 需要输出 png/jpeg/webp 图片文件 (6) 需要处理 GPT Image API 的 base64 图片响应
 ---
 
 # gpt-image
@@ -28,7 +28,7 @@ npx skills add ayflying/ai-skills --skill gpt-image
 
 ## 模型选择
 
-默认使用当前最新 GPT Image 绘图模型 `gpt-image-2`。只有用户明确指定模型时，才用 `--model` 切换到其它 GPT Image 版本：
+默认使用 `gpt-image-2.5-flare`，需配置支持该模型名称的 OpenAI 兼容服务。只有用户明确指定模型时，才用 `--model` 切换到其它 GPT Image 版本：
 
 ```bash
 python scripts/gpt_image.py generate "一枚简洁的应用图标" -o outputs/icon.png
@@ -47,7 +47,7 @@ python scripts/gpt_image.py generate "一张现代 SaaS 仪表盘宣传图，清
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
-| `--model` | GPT Image 模型版本 | `gpt-image-2` |
+| `--model` | GPT Image 模型版本 | `gpt-image-2.5-flare` |
 | `--size` | 输出尺寸，支持 `auto` 或 `WIDTHxHEIGHT` | `auto` |
 | `--quality` | `auto`、`low`、`medium`、`high` | `auto` |
 | `--format` | `png`、`jpeg`、`webp` | `png` |
@@ -62,13 +62,13 @@ python scripts/gpt_image.py generate "一张现代 SaaS 仪表盘宣传图，清
 `gpt-image-2` 支持图像输入与图像输出。图生图使用 Image API 的 `edits` 端点：上传一张或多张参考图，再用 prompt 描述新图。
 
 ```bash
-python scripts/gpt_image.py i2i "把这张产品图改成高端电商主图，保留产品外观，白色摄影棚背景" --image product.png --model gpt-image-2 -o outputs/product-main.png
+python scripts/gpt_image.py i2i "把这张产品图改成高端电商主图，保留产品外观，白色摄影棚背景" --image product.png -o outputs/product-main.png
 ```
 
 多参考图图生图：
 
 ```bash
-python scripts/gpt_image.py i2i "把这些物品组合成一张节日礼盒产品图" --image item1.png --image item2.png --image item3.png --model gpt-image-2 -o outputs/gift.png
+python scripts/gpt_image.py i2i "把这些物品组合成一张节日礼盒产品图" --image item1.png --image item2.png --image item3.png -o outputs/gift.png
 ```
 
 ## 图片编辑

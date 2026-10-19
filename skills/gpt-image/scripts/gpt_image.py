@@ -15,7 +15,7 @@ from urllib.parse import urlsplit, urlunsplit
 import requests
 
 
-DEFAULT_MODEL = "gpt-image-2"
+DEFAULT_MODEL = "gpt-image-2.5-flare"
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 API_KEY_ENV = "GPT_IMAGE_API_KEY"
 BASE_URL_ENV = "GPT_IMAGE_BASE_URL"

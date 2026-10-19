@@ -143,7 +143,7 @@ ai-skills/
 
 ### gpt-image
 
-**描述**: OpenAI GPT Image 系列画图与图片编辑技能，支持 `gpt-image-1`、`gpt-image-1.5`、`gpt-image-2` 等版本切换。
+**描述**: OpenAI GPT Image 系列画图与图片编辑技能，默认使用 `gpt-image-2.5-flare`，支持 `gpt-image-1`、`gpt-image-1.5`、`gpt-image-2` 等版本切换。
 
 **功能**:
 - 调用 GPT Image 系列模型生成图片并保存为本地文件
