@@ -163,7 +163,8 @@ python scripts/teambition_bug.py finish --task-id "<taskId>" --verification "写
 - 如果无法确认任务第一执行者，或第一执行者不是自己，跳过该任务，不读取详情、不留言、不修改，避免与他人争抢。
 - 读取 bug 清单或上下文时，截图是判断 bug 原因的重要证据，不能只看文字。`context/get --with-rich-text` 会按官方 `GET /v3/task/rtf/render` 自动渲染 `taskId:note`、`taskId:trace:<traceId>` 和可识别的 `taskId:cf:<cfId>`，从 `rtfValueToken.attachments` 提取真实图片/附件下载链接。
 - 对可访问截图，先运行 `download-images --task-id <taskId>` 下载，再用可用的视觉工具查看本地图片内容，并把截图里看到的页面、报错、异常状态纳入 bug 判断；OSS 图片直链不能带 OpenAPI 的 `Authorization` 头，脚本已自动区分 API 请求和图片下载。
-- 如果 `context` 仍然只有 `[图片]` 占位但没有 `mediaResources.images`，再留言请用户补充可访问截图或把截图中的关键信息转成文字。
+- **回复附件必须读取**：`context` 和 `download-images` 会解析动态 `content` JSON 中的 `files` 文件 ID，按 `task:{taskId}/activity:{activityId}/file:{fileId}` 调用官方 `POST /v3/file/query/by-resource-ids`（`needSign: true`）。`activityFiles.files` 保留回复 ID、文件 ID、文件名和下载地址，图片合并进 `mediaResources.images`；非图片附件可用 `download-images --task-id <taskId> --include-attachments` 下载。不要把文件 ID 当作上传 token，也不要用 `GET /v3/file/{id}` 猜测接口。
+- 如果没有图片链接，先检查 `activityFiles.errors`：解析失败不等于没有附件，需报告具体错误。备注富文本和回复附件都解析后仍无可访问资源，才请用户补图；不要漏读已有回复截图。
 - 单个 bug 需求不明确时，必须先问清楚“如何复现”，再用 `ask`、`comment` 或 `quick-reply --template need-info` 留言追问；至少追问页面入口、具体操作步骤、账号/数据/环境、期望结果、实际结果或报错，不要猜测修改，也不要一直等待这个任务；把它记为“待回复”，继续处理下一个明确任务。
 - 每完成一个明确任务后，从队列开头重新检查之前“待回复”的任务：读取 `activities/comments/context` 判断是否有新回复；如果需求已明确再开始修改，否则可以继续追问并处理后续任务。
 - 可以多次留言追问来澄清如何复现、期望结果、实际结果、环境信息、账号/权限、截图或验收标准；复现方式不清楚或需求明确前千万不要乱改。

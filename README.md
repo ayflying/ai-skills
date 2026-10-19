@@ -17,7 +17,7 @@
 | [gpt-image](skills/gpt-image/SKILL.md) | OpenAI GPT Image 系列画图与图片编辑，默认 `gpt-image-2.5-flare` | `skills/gpt-image/` |
 | [ollama](skills/ollama/SKILL.md) | 调用 Ollama 本地模型 (qwen3.5:9b) | `skills/ollama/` |
 | [gitea-weekly-report](skills/gitea-weekly-report/SKILL.md) | 生成一个或多个 Gitea 组织的周报，遍历全部分支并转换技术提交为业务功能点 | `skills/gitea-weekly-report/` |
-| [teambition-bug](skills/teambition-bug/SKILL.md) | 通过 Teambition 官方 OpenAPI 读取、留言、识别截图、推进状态并审计看板字段 | `skills/teambition-bug/` |
+| [teambition-bug](skills/teambition-bug/SKILL.md) | 通过 Teambition 官方 OpenAPI 读取、留言、下载回复截图与附件、推进状态并审计看板字段 | `skills/teambition-bug/` |
 | [image-recognition](skills/image-recognition/SKILL.md) | 全局优先用于读图/OCR/截图理解，调用 OpenAI 兼容视觉模型只返回精简中文描述以节省 token | `skills/image-recognition/` |
 | [website-function-mapper](skills/website-function-mapper/SKILL.md) | 用 Playwright 安全侦察网站功能、动态表单、接口线索和文档说明，输出复刻规格 | `skills/website-function-mapper/` |
 

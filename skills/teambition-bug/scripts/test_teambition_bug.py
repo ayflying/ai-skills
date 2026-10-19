@@ -1,4 +1,7 @@
 import unittest
+import json
+import tempfile
+from unittest.mock import Mock, patch
 from contextlib import redirect_stderr
 from io import StringIO
 from pathlib import Path
@@ -117,6 +120,73 @@ class TeambitionBugHelperTests(unittest.TestCase):
         ask = parser.parse_args(["ask", "--task-id", "t1", "--question", "怎么复现？", "--yes"])
         self.assertFalse(hasattr(quick, "render_mode") and quick.render_mode)
         self.assertFalse(hasattr(ask, "render_mode") and ask.render_mode)
+
+
+class ActivityFileTests(unittest.TestCase):
+    def activities(self, count=1):
+        return [{"id": "reply1", "action": "comment", "content": json.dumps({"files": [f"{i:024x}" for i in range(count)]})}]
+
+    def test_resolves_comment_file_scope_and_classifies_mime(self):
+        client = Mock()
+        rid = "task:t1/activity:reply1/file:" + "0" * 24
+        client.request.return_value = [{"id": "0" * 24, "resourceId": rid, "fileName": "截图", "mimeType": "image/png", "downloadUrl": "https://files.example/blob", "fileToken": "secret"}]
+        result = teambition_bug.resolve_activity_files(client, "t1", self.activities())
+        client.request.assert_called_once_with("POST", "/v3/file/query/by-resource-ids", json_body={"resourceIds": [rid], "needSign": True})
+        self.assertEqual(result["resources"]["images"], ["https://files.example/blob"])
+        self.assertEqual(result["files"][0]["activityId"], "reply1")
+        self.assertNotIn("fileToken", result["files"][0])
+
+    def test_empty_malformed_and_duplicate_files(self):
+        client = Mock()
+        self.assertEqual(teambition_bug.resolve_activity_files(client, "t", [{"id": "a", "content": "bad"}])["files"], [])
+        client.request.assert_not_called()
+        activities = self.activities() * 2
+        client.request.return_value = []
+        result = teambition_bug.resolve_activity_files(client, "t", activities)
+        self.assertEqual(len(result["errors"]), 1)
+        client.request.assert_called_once()
+
+    def test_batches_at_fifty_and_reports_errors(self):
+        client = Mock()
+        client.request.side_effect = teambition_bug.ApiError("HTTP 403")
+        result = teambition_bug.resolve_activity_files(client, "t", {"result": self.activities(51)})
+        self.assertEqual(client.request.call_count, 2)
+        self.assertEqual(len(result["errors"]), 51)
+        self.assertEqual(len(client.request.call_args_list[0].kwargs["json_body"]["resourceIds"]), 50)
+
+    def test_non_image_attachment_is_not_an_image(self):
+        client = Mock()
+        rid = "task:t/activity:reply1/file:" + "0" * 24
+        client.request.return_value = [{"resourceId": rid, "fileName": "数据.pdf", "mimeType": "application/pdf", "downloadUrl": "https://files.example/blob"}]
+        result = teambition_bug.resolve_activity_files(client, "t", self.activities())
+        self.assertEqual(result["resources"]["images"], [])
+        self.assertEqual(result["resources"]["attachments"], ["https://files.example/blob"])
+
+    def test_context_merges_reply_images_and_keeps_source(self):
+        client = Mock()
+        client.request.return_value = []
+        attachment = {"files": [{"activityId": "a"}], "errors": [], "resources": {"images": ["https://example.test/s.png"], "attachments": [], "links": []}}
+        with patch.object(teambition_bug, "get_task", return_value={"id": "t"}), patch.object(teambition_bug, "list_activities", return_value=[]), patch.object(teambition_bug, "render_task_rich_text", return_value={}), patch.object(teambition_bug, "resolve_activity_files", return_value=attachment):
+            result = teambition_bug.build_task_context(client, "t")
+        self.assertTrue(result["imageAnalysisRequired"])
+        self.assertEqual(result["mediaResources"]["images"], ["https://example.test/s.png"])
+        self.assertEqual(result["activityFiles"]["files"][0]["activityId"], "a")
+
+    def test_download_includes_reply_image_without_authorization_headers(self):
+        client = Mock()
+        rid = "task:t/activity:reply1/file:" + "0" * 24
+        client.request.side_effect = [[], [{"resourceId": rid, "mimeType": "image/png", "downloadUrl": "https://files.example/blob"}]]
+        response = Mock(status_code=200, headers={"Content-Type": "image/png"})
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        response.iter_content.return_value = [b"png"]
+        with tempfile.TemporaryDirectory() as folder, patch.object(teambition_bug, "TeambitionClient", return_value=client), patch.object(teambition_bug, "get_task", return_value={"id": "t"}), patch.object(teambition_bug, "list_activities", return_value=self.activities()), patch.object(teambition_bug.requests, "get", return_value=response) as download, patch.object(teambition_bug, "print_json") as output:
+            args = teambition_bug.build_parser().parse_args(["download-images", "--task-id", "t", "--output-dir", folder])
+            teambition_bug.cmd_download_images(args)
+            download.assert_called_once_with("https://files.example/blob", timeout=(5, 30), stream=True)
+            result = output.call_args.args[0]
+            self.assertEqual(result["downloaded"][0]["bytes"], 3)
+            self.assertTrue(Path(result["downloaded"][0]["path"]).is_file())
 
 
 if __name__ == "__main__":

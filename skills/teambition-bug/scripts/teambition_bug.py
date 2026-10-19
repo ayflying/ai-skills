@@ -406,6 +406,58 @@ def merge_media_resources(*groups: dict[str, list[str]]) -> dict[str, list[str]]
     return {key: sorted(set(value)) for key, value in merged.items()}
 
 
+def resolve_activity_files(client: TeambitionClient, task_id: str, activities: Any) -> dict[str, Any]:
+    """按任务及动态作用域解析评论附件，不能将文件 ID 当下载 token。"""
+    items = activities if isinstance(activities, list) else activities.get("result", []) if isinstance(activities, dict) else []
+    references: dict[str, dict[str, str]] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        activity_id = item.get("id") or item.get("_id")
+        content = parse_json_maybe(item.get("content"))
+        if not activity_id or not isinstance(content, dict):
+            continue
+        files = content.get("files") or []
+        if not isinstance(files, list):
+            continue
+        for file in files:
+            file_id = (file.get("id") or file.get("_id")) if isinstance(file, dict) else file
+            if not isinstance(file_id, str) or not re.fullmatch(r"[0-9a-fA-F]{24}", file_id):
+                continue
+            resource_id = f"task:{task_id}/activity:{activity_id}/file:{file_id}"
+            references[resource_id] = {"activityId": str(activity_id), "fileId": file_id, "resourceId": resource_id}
+    resolved: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+    ids = list(references)
+    for start in range(0, len(ids), 50):
+        batch = ids[start:start + 50]
+        try:
+            result = client.request("POST", "/v3/file/query/by-resource-ids", json_body={"resourceIds": batch, "needSign": True})
+            if not isinstance(result, list):
+                raise ApiError("附件查询响应不是文件列表")
+            found = set()
+            for file in result:
+                if not isinstance(file, dict) or file.get("resourceId") not in references:
+                    continue
+                resource_id = file["resourceId"]
+                found.add(resource_id)
+                # 不输出文件复制 token，仅保留读取和定位所需元数据。
+                metadata = {key: file.get(key) for key in ("id", "fileName", "fileSize", "mimeType", "downloadUrl", "thumbnailUrl")}
+                resolved.append({**references[resource_id], **metadata})
+            for resource_id in batch:
+                if resource_id not in found:
+                    errors.append({**references[resource_id], "error": "附件查询未返回该文件"})
+        except ApiError as exc:
+            errors.extend({**references[resource_id], "error": str(exc)} for resource_id in batch)
+    resources = {"images": [], "attachments": [], "links": []}
+    for file in resolved:
+        url = file.get("downloadUrl")
+        if isinstance(url, str) and url.startswith(("https://", "http://")):
+            image = str(file.get("mimeType") or "").startswith("image/") or str(file.get("fileName") or "").lower().endswith(IMAGE_EXTENSIONS)
+            resources["images" if image else "attachments"].append(url)
+    return {"files": resolved, "errors": errors, "resources": merge_media_resources(resources)}
+
+
 def count_image_placeholders(value: Any) -> int:
     text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
     return text.count("[图片]")
@@ -968,6 +1020,7 @@ def build_task_context(client: TeambitionClient, task_id: str, page_size: int = 
             rich_text[key].extend(extracted[key])
     rich_text = {key: sorted(set(value)) for key, value in rich_text.items()}
     rich_text_render = render_task_rich_text(client, task, traces)
+    activity_files = resolve_activity_files(client, task_id, activities)
     media_resources = merge_media_resources(
         rich_text,
         extract_media_resources(task),
@@ -983,9 +1036,10 @@ def build_task_context(client: TeambitionClient, task_id: str, page_size: int = 
         "traces": traces,
         "richTextLinks": rich_text,
         "richTextRender": rich_text_render,
-        "mediaResources": media_resources,
+        "activityFiles": activity_files,
+        "mediaResources": merge_media_resources(media_resources, activity_files["resources"]),
         "imagePlaceholders": image_placeholders,
-        "imageAnalysisRequired": bool(media_resources["images"] or image_placeholders),
+        "imageAnalysisRequired": bool(media_resources["images"] or activity_files["resources"]["images"] or image_placeholders or activity_files["errors"]),
         "missingInfoHints": guess_missing_info(task, activities),
     }
 
@@ -1052,24 +1106,32 @@ def cmd_download_images(args: argparse.Namespace) -> None:
         extract_media_resources(traces),
         rich_text_render.get("resources", {}),
     )
+    activity_files = resolve_activity_files(client, args.task_id, activities)
+    resources = merge_media_resources(resources, activity_files["resources"])
     image_urls = resources["images"]
+    if getattr(args, "include_attachments", False):
+        image_urls = sorted(set(image_urls + resources["attachments"]))
     output_dir = Path(args.output_dir or ROOT / "outputs" / "teambition-images" / args.task_id)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     downloaded = []
     for index, url in enumerate(image_urls, start=1):
-        response = requests.get(url, timeout=(5, 30), stream=True)
-        if response.status_code >= 400:
-            downloaded.append({"url": url, "error": f"HTTP {response.status_code}", "body": response.text[:300]})
-            continue
-        file_path = output_dir / safe_download_name(url, index, response.headers.get("Content-Type"))
-        total = 0
-        with file_path.open("wb") as handle:
-            for chunk in response.iter_content(chunk_size=1024 * 256):
-                if chunk:
-                    handle.write(chunk)
-                    total += len(chunk)
-        downloaded.append({"url": url, "path": str(file_path), "bytes": total})
+        try:
+            # 单独请求签名地址，绝不复用 OpenAPI 的认证头。
+            with requests.get(url, timeout=(5, 30), stream=True) as response:
+                if response.status_code >= 400:
+                    downloaded.append({"url": url, "error": f"HTTP {response.status_code}"})
+                    continue
+                file_path = output_dir / safe_download_name(url, index, response.headers.get("Content-Type"))
+                total = 0
+                with file_path.open("wb") as handle:
+                    for chunk in response.iter_content(chunk_size=1024 * 256):
+                        if chunk:
+                            handle.write(chunk)
+                            total += len(chunk)
+                downloaded.append({"url": url, "path": str(file_path), "bytes": total})
+        except requests.RequestException:
+            downloaded.append({"url": url, "error": "附件下载网络异常，请重新获取签名后重试"})
 
     placeholders = count_image_placeholders(task) + count_image_placeholders(activities) + count_image_placeholders(traces)
     print_json(
@@ -1078,8 +1140,9 @@ def cmd_download_images(args: argparse.Namespace) -> None:
             "outputDir": str(output_dir),
             "downloaded": downloaded,
             "richTextFields": rich_text_render.get("rtfFields", []),
+            "activityFiles": activity_files,
             "imagePlaceholders": placeholders,
-            "note": "下载后必须查看图片内容再判断 bug；如果富文本渲染后仍没有可访问 URL，请留言要求补充可访问截图。",
+            "note": "下载后必须查看图片内容再判断 bug；activityFiles.errors 表示附件解析失败，不代表回复没有附件。非图片附件可加 --include-attachments 下载。",
         }
     )
 
@@ -1662,7 +1725,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--html-expire-seconds", type=int, default=3600)
     p.set_defaults(func=cmd_render_rich_text)
 
-    p = sub.add_parser("download-images", help="下载任务上下文中的图片，供 AI 识别截图内容")
+    p = sub.add_parser("download-images", help="下载任务上下文及回复中的图片，供 AI 识别截图内容")
+    p.add_argument("--include-attachments", action="store_true", help="同时下载非图片附件")
     p.add_argument("--task-id", required=True)
     p.add_argument("--output-dir")
     p.add_argument("--page-size", type=int, default=50)

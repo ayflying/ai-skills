@@ -61,4 +61,12 @@ python scripts/teambition_bug.py finish --task-id "<taskId>" --verification "写
 
 回复要简单明了，让策划、测试、运营等非技术人员也能看懂。读取上下文时如果有截图，必须下载并识别图片内容。脚本会用官方 `GET /v3/task/rtf/render` 渲染 `taskId:note`、`taskId:trace:<traceId>` 和可识别的 `taskId:cf:<cfId>`，再从 `rtfValueToken.attachments` 提取真实图片/附件下载链接；如果仍然只有 `[图片]` 占位但没有可访问图片链接，才留言请用户补充可访问截图或把截图关键信息转成文字。
 
+回复中的截图和普通附件也会读取：脚本解析动态 `content.files`，通过官方文件资源接口获取签名下载地址；`context` 输出 `activityFiles`（含来源回复 ID、文件元数据和错误），图片自动合入 `mediaResources.images`。下载全部附件可执行：
+
+```bash
+python scripts/teambition_bug.py download-images --task-id "<taskId>" --include-attachments
+```
+
+附件查询失败会明确列在 `activityFiles.errors`，不能当作“没有截图”；签名链接有时效，不要提交到仓库或公开传播。下载不携带 OpenAPI 的认证头。
+
 更多说明见 `SKILL.md`。

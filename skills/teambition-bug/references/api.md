@@ -37,7 +37,18 @@
 
 下载 `rtfValueToken.attachments` 里的 OSS 签名直链时不要带 OpenAPI 的 `Authorization` 请求头；签名 URL 自身负责鉴权。`download-images` 已自动区分 OpenAPI 请求和图片直链下载。
 
-如果 `context` 仍然只有 `[图片]` 占位且 `mediaResources.images` 为空，再让用户补充可访问截图或截图文字。
+### 回复中的文件附件
+
+评论 `content` 是 JSON 字符串，`files` 中的文件 ID 需要连同动态 ID 解析，不属于上述富文本字段。使用 [根据 resourceId 批量获取文件详情](https://open.teambition.com/docs/apis/65b20e66912d20d3b5781196)（官方标记支持 userToken）：
+
+```text
+POST /v3/file/query/by-resource-ids
+{"resourceIds":["task:{taskId}/activity:{activityId}/file:{fileId}"],"needSign":true}
+```
+
+每批 1～50 个资源，返回文件列表包含 `resourceId`、`id`、`fileName`、`mimeType`、`fileSize` 和 `downloadUrl`。签名默认 1800 秒有效；下载直链不带 OpenAPI 认证头。不要调用未经支持的 `GET /v3/file/{id}`。
+
+脚本的 `activityFiles.files` 保留附件与回复的对应关系；`activityFiles.errors` 明示解析失败或服务端未返回的文件。图片合并到 `mediaResources.images`，其他文件合并到 `attachments`，可用 `download-images --include-attachments` 一起下载。若资源仍为空，必须先排除解析错误，再让用户补图，不能把接口失败当作回复无附件。
 
 ## 留言和状态
 
