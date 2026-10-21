@@ -28,8 +28,15 @@ npx skills add ayflying/ai-skills --skill baota-panel
 
 3. **安装依赖**:
    ```bash
-   pip install requests urllib3
+   python -m pip install -r requirements.txt
    ```
+
+## 证书与授权
+
+- 默认校验 HTTPS 证书。自签名面板需先核验可信 CA，再通过环境变量或 `.env` 的 `BT_CA_BUNDLE` 配置 CA 文件路径；Python 调用也可传 `ca_bundle="/path/to/ca.pem"`。
+- 普通 API 不读取登录态、不创建代理计划任务。部分 Docker 内部接口需要登录态，默认 CLI 将返回未授权提示；确认授权后，Python 调用使用 `BTPanelAPI(url, key, allow_session_access=True)`。
+- Shell 空响应不代表防火墙拦截。仅在确认目标、安全策略和创建/执行/清理计划任务的授权后设置 `allow_crontab_fallback=True`；不保证代理成功。
+- 删除、清空、部署和执行 Shell 前确认影响与授权；不记录凭证、会话和原始错误响应。
 
 ## 使用方式
 
@@ -42,7 +49,7 @@ python scripts/bt_api.py
 # 列出所有网站
 python scripts/bt_api.py sites
 
-# 查看 Docker 容器
+# 查看 Docker 容器（需要登录态时改用上方已授权的 Python 调用）
 python scripts/bt_api.py docker
 
 # 列出数据库
@@ -64,14 +71,14 @@ python scripts/bt_api.py files /www/wwwroot
 
 该技能深度集成了宝塔面板 API，详细的接口定义（路径、参数、响应格式）请参阅：
 
-- [公共规范](docs/common.md) - 认证与 Token 生成
-- [网站管理](docs/site.md) - 增删改查、SSL
-- [文件管理](docs/files.md) - 目录、读写、Shell
-- [Docker 管理](docs/docker.md) - 容器与 Compose
-- [系统管理](docs/system.md) - 资源状态、软件安装与更新
-- [数据库管理](docs/database.md) - 数据库增删改
-- [安全管理](docs/security.md) - 防火墙与 SSH
-- [日志查看](docs/logs.md) - 面板与网站日志
+- [公共规范](references/common.md) - 认证与 Token 生成
+- [网站管理](references/site.md) - 增删改查、SSL
+- [文件管理](references/files.md) - 目录、读写、Shell
+- [Docker 管理](references/docker.md) - 容器与 Compose
+- [系统管理](references/system.md) - 资源状态、软件安装与更新
+- [数据库管理](references/database.md) - 数据库增删改
+- [安全管理](references/security.md) - 防火墙与 SSH
+- [网站日志](references/site.md#11-获取网站日志) - 网站日志接口；面板日志使用 `get_panel_logs()`
 
 ## 许可证
 

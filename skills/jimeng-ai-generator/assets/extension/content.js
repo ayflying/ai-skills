@@ -1,147 +1,116 @@
-// content.js - 跨标签锁定稳健版 (版本: 1.16)
-const VERSION = "1.16";
+// 即梦本地任务助手；只有新增图片确实保存后才报告完成。
+const VERSION = "1.17";
 const SERVER_URL = 'http://localhost:18542';
 const TAB_ID = Math.random().toString(36).substring(7);
-
-console.log(`[助手 v${VERSION}] 标签页 ID: ${TAB_ID} 已启动`);
-
 let isProcessingTask = false;
-let lastTaskTime = 0; // 上次任务完成时间
+let lastTaskTime = 0;
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-// 跨标签页抢锁逻辑：确保只有一个标签页在工作
+function refreshLock() {
+    localStorage.setItem('jimeng_master_lock', JSON.stringify({id: TAB_ID, ts: Date.now()}));
+}
+
 function tryGetMasterLock() {
-    const lockKey = 'jimeng_master_lock';
-    const now = Date.now();
-    const lockData = JSON.parse(localStorage.getItem(lockKey) || '{}');
-
-    // 如果锁不存在，或者锁已过期（超过 10 秒），则抢锁
-    if (!lockData.id || (now - lockData.ts > 10000) || lockData.id === TAB_ID) {
-        localStorage.setItem(lockKey, JSON.stringify({ id: TAB_ID, ts: now }));
+    let lock = {};
+    try { lock = JSON.parse(localStorage.getItem('jimeng_master_lock') || '{}'); }
+    catch (error) { console.warn('任务锁格式无效，将重新获取'); }
+    if (!lock.id || Date.now() - lock.ts > 10000 || lock.id === TAB_ID) {
+        refreshLock();
         return true;
     }
     return false;
 }
 
-// 下载生成的图片
-async function downloadGeneratedImage(taskId) {
-    try {
-        // 等待图片加载
-        await new Promise(r => setTimeout(r, 2000));
-        
-        // 查找生成的图片元素 (即梦AI的图片通常在特定的容器中)
-        const images = document.querySelectorAll('img[src*="jianying"], img[src*="seaway"]');
-        if (images.length > 0) {
-            const img = images[0];
-            const imgUrl = img.src;
-            
-            // 发送图片URL到服务器保存
-            await fetch(`${SERVER_URL}/save_image`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    taskId: taskId, 
-                    url: imgUrl,
-                    timestamp: Date.now()
-                })
-            });
-            console.log(`>>> [图片已保存] ${imgUrl.substring(0, 50)}...`);
-        } else {
-            // 尝试查找下载按钮
-            const downloadBtn = Array.from(document.querySelectorAll('button, span')).find(el => 
-                (el.innerText || '').includes('下载') || (el.innerText || '').includes('保存')
-            );
-            if (downloadBtn) {
-                downloadBtn.click();
-                console.log(">>> [点击下载按钮]");
-            }
-        }
-    } catch (e) {
-        console.error(">>> [下载失败]", e);
+async function requestJson(path, options = {}) {
+    const response = await fetch(`${SERVER_URL}${path}`, {
+        ...options, signal: AbortSignal.timeout(45000)
+    });
+    const data = await response.json();
+    if (!response.ok || data.success === false) {
+        throw new Error(data.error || `本地接口失败：HTTP ${response.status}`);
     }
+    return data;
+}
+
+function generatedImages(loadedOnly = true) {
+    return Array.from(document.querySelectorAll('img[src*="jianying"], img[src*="seaway"]'))
+        .filter(img => !loadedOnly || (img.complete && img.naturalWidth > 0))
+        .map(img => img.src);
+}
+
+async function downloadGeneratedImage(taskId, previousUrls) {
+    const imageUrl = generatedImages().find(url => !previousUrls.has(url));
+    if (!imageUrl) throw new Error('未找到本轮新增图片');
+    const result = await requestJson('/save_image', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({taskId, url: imageUrl})
+    });
+    if (result.success !== true || !result.path) throw new Error('服务器未确认保存成功');
+    return true;
 }
 
 async function heartbeat() {
-    // 任务完成后至少等待10秒冷却期，防止重复提交
-    if (isProcessingTask || (Date.now() - lastTaskTime < 10000)) return;
-    
-    // 1. 只有拿到了 Master 锁的标签页才允许通信
-    if (!tryGetMasterLock()) {
-        // console.log("其他标签页正在工作，本页待命...");
-        return;
-    }
-
-    // 2. 检查 UI 就绪
+    if (isProcessingTask || Date.now() - lastTaskTime < 10000 || !tryGetMasterLock()) return;
     const editor = document.querySelector('[contenteditable="true"]');
     if (!editor || !window.location.href.includes('generate')) return;
-
+    isProcessingTask = true;
     try {
-        const response = await fetch(`${SERVER_URL}/get_task?v=${VERSION}`);
-        const task = await response.json();
-        
+        const task = await requestJson(`/get_task?v=${VERSION}`);
         if (task.id) {
-            console.log(`>>> [抢单成功] 正在处理 ID: ${task.id}`);
-            isProcessingTask = true;
             await doTask(editor, task);
-            isProcessingTask = false;
         }
-    } catch (e) {
-        // 连接失败时静默，不刷屏
+    } catch (error) {
+        // 本地服务未启动时保持页面可用，不声称任务成功。
+        console.debug('即梦本地服务暂不可用');
+    } finally {
+        isProcessingTask = false;
     }
 }
 
 async function doTask(editor, task) {
+    const lockTimer = setInterval(refreshLock, 3000);
     try {
-        // 1. 模型切换
-        const v4Btn = Array.from(document.querySelectorAll('button, span, div')).find(el => 
-            (el.innerText || el.textContent || "").includes('4.0')
-        );
-        if (v4Btn) { v4Btn.click(); await new Promise(r => setTimeout(r, 1000)); }
-
-        // 2. 填词
+        const v4Button = Array.from(document.querySelectorAll('button, span, div'))
+            .find(el => (el.innerText || el.textContent || '').includes('4.0'));
+        if (v4Button) { v4Button.click(); await wait(1000); }
+        // 在真正提交前记录已有图片，避免完成按钮残留导致旧图被认作新结果。
+        const previousUrls = new Set(generatedImages(false));
         editor.focus();
         document.execCommand('selectAll', false, null);
         document.execCommand('delete', false, null);
         document.execCommand('insertText', false, task.prompt);
-        await new Promise(r => setTimeout(r, 1000));
-        
-        // 3. 发送
-        console.log(">>> 发送指令...");
-        editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+        await wait(1000);
+        editor.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true
+        }));
         document.querySelector('button[class*="send"], button:has(svg)')?.click();
-
-        // 4. 结果监控
-        let success = false;
-        for (let i = 0; i < 60; i++) {
-            // 每秒更新一次锁，防止其他标签页抢活
-            localStorage.setItem('jimeng_master_lock', JSON.stringify({ id: TAB_ID, ts: Date.now() }));
-            
-            await new Promise(r => setTimeout(r, 2000));
-            const text = document.body.innerText;
-            if (text.includes('再次生成') || text.includes('重新编辑') || text.includes('重新生成')) {
-                console.log(">>> [任务完成] 检测到界面更新！");
-                success = true;
+        let hasNewImage = false;
+        for (let attempt = 0; attempt < 60; attempt++) {
+            await wait(2000);
+            if (generatedImages().some(url => !previousUrls.has(url))) {
+                hasNewImage = true;
                 break;
             }
         }
-
-        // 5. 下载图片
-        if (success) {
-            await downloadGeneratedImage(task.id);
-        }
-
-        // 6. 结果回传 (CORS 已处理)
-        await fetch(`${SERVER_URL}/finish_task?id=${task.id}&status=done&v=${VERSION}`, { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+        if (!hasNewImage) throw new Error('等待新增图片超时');
+        await downloadGeneratedImage(task.id, previousUrls);
+        await requestJson(`/finish_task?id=${encodeURIComponent(task.id)}&status=done&v=${VERSION}`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'}
         });
-        
-        lastTaskTime = Date.now(); // 标记任务完成时间
-        console.log(">>> [反馈成功]");
-
-    } catch (err) {
-        console.error("执行出错:", err);
+        console.log('任务图片已保存并确认完成');
+    } catch (error) {
+        console.error('任务失败，未标记完成：', error.message);
+        try {
+            await requestJson(`/finish_task?id=${encodeURIComponent(task.id)}&status=failed&v=${VERSION}`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'}
+            });
+        } catch (reportError) {
+            console.error('失败状态未送达；请检查本地服务，不要自动重复生成');
+        }
+    } finally {
+        clearInterval(lockTimer);
+        lastTaskTime = Date.now();
     }
 }
 
-// 启动心跳
 setInterval(heartbeat, 3000);

@@ -6,10 +6,8 @@ import time
 import random
 from datetime import datetime
 
-OUTPUT_DIR = "D:/git/ai-skills/skills/jimeng-ai-generator/outputs"
-BROWSER_PROFILE = "D:/git/ai-skills/skills/jimeng-ai-generator/browser-profile"
+from local_support import OUTPUT_DIR, BROWSER_PROFILE
 STORAGE_STATE = os.path.join(BROWSER_PROFILE, "jimeng_vip.json")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 async def generate_and_download_4(prompt=None):
@@ -23,6 +21,7 @@ async def generate_and_download_4(prompt=None):
     print(f"提示词: {prompt}")
     print("=" * 60)
 
+    BROWSER_PROFILE.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     session_dir = os.path.join(OUTPUT_DIR, f"eval_{timestamp}")
     os.makedirs(session_dir, exist_ok=True)

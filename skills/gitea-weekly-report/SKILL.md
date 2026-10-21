@@ -1,7 +1,7 @@
 ---
 name: gitea-weekly-report
 description: |
-  获取一个或多个 Gitea 组织内项目的工作日志，遍历仓库全部分支提交，过滤技术噪音，并转换成用户能看懂的功能周报。
+  获取一个或多个 Gitea 组织内项目的工作日志，分页遍历当前账号可见仓库的全部可见分支提交，过滤技术噪音，并转换成用户能看懂的功能周报。
   Use when: (1) 获取XX组织的项目工作日志 (2) 生成一个或多个 Gitea 组织的周报 (3) 查看团队上周的工作内容 (4) 将技术提交转换为业务功能点
 ---
 
@@ -9,7 +9,7 @@ description: |
 
 ## 功能说明
 
-通过 Gitea API 获取一个或多个组织下所有仓库、所有分支的提交记录，按时间范围筛选、按 commit SHA 去重、过滤技术噪音，并生成按项目分组的用户可读周报。
+通过 Gitea API 获取一个或多个组织下当前账号可见仓库、可见分支的提交记录，按时间范围筛选、按 commit SHA 去重、过滤技术噪音，并生成按项目分组的用户可读周报。
 
 ## 安装指南
 
@@ -40,7 +40,7 @@ curl.exe -s -u "username:token" "https://gitea.example.com/api/v1/..."
 1. **解析组织输入**：得到组织列表和对应 base URL。
 2. **获取仓库列表**：先调用 `/api/v1/orgs/{org}/repos?limit=50&page={page}`。
 3. **仓库列表 fallback**：如果组织仓库接口因 token scope、权限或 401/403 失败，改用 `/api/v1/repos/search?limit=50&page={page}`，再按 `owner.login == org` 过滤。
-4. **读取分支列表**：每个仓库必须先调用 `/api/v1/repos/{org}/{repo}/branches`。
+4. **读取分支列表**：每个仓库必须先调用 `/api/v1/repos/{org}/{repo}/branches?limit=50&page={page}`。
 5. **遍历全部分支**：对每个分支调用 commits 接口，不要只查默认分支。
 6. **按 SHA 去重**：同一 commit 出现在多个分支时，只保留一条。
 7. **统计提交数量**：正式生成前内部统计每个仓库提交数，例如 `ad-insight: 3, auto-ad: 25`。
@@ -66,7 +66,7 @@ GET /api/v1/repos/search?limit=50&page={page}
 ### 获取仓库分支
 
 ```http
-GET /api/v1/repos/{org}/{repo}/branches
+GET /api/v1/repos/{org}/{repo}/branches?limit=50&page={page}
 ```
 
 ### 获取分支提交
@@ -80,6 +80,15 @@ GET /api/v1/repos/{org}/{repo}/commits?sha={branch_name}&since={start_date}&unti
 ```http
 GET /api/v1/repos/{org}/{repo}/commits?branch={branch_name}&since={start_date}&until={end_date}&limit=100&page={page}
 ```
+
+## 分页与覆盖边界
+
+- 仓库、搜索、分支、提交接口均从 `page=1` 开始逐页读取，优先遵循服务端 next/Link 分页信息；没有分页元数据时继续直到成功返回空列表。不能因一页少于请求 limit 就推断已读完，服务端可能限制实际页大小。
+- 搜索接口分页依据原始响应，而不是过滤 owner 后的列表长度；当前页过滤后为空仍可能有后续匹配仓库。对仓库全名、分支名和仓库内 SHA 分别去重。
+- 每页检查 HTTP 状态及响应结构；超时、鉴权失败、限流和解析错误不能当作空列表。重试有上限，失败页记录组织、仓库、分支及页号（不含凭证），标记覆盖不完整。
+- 分支名作为查询参数必须 URL 编码。客户端以明确时区再次按 `[since, until)` 过滤提交，避免服务端 until 包含端点造成重复。
+- fallback 搜索不能增加 Token 的权限。只覆盖当前账号可见且抓取成功的仓库/分支，不保证私有未授权仓库、已删除分支、已改写且不可达提交或抓取过程中新增的分支；lookback 不替代权限和分页检查。
+- 有任一失败页或已知缺失仓库时，明确列出缺口，只能称为“可见范围内的部分周报”，不能宣称组织全量；必要时请用户补权限或确认范围。
 
 ## lookback 检查
 

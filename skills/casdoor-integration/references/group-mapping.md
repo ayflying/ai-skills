@@ -11,47 +11,36 @@ Casdoor 提供了三个维度的身份资源，建议按如下方式映射：
 
 ## 2. 用户组匹配规则
 
-Casdoor 用户组格式为 `组织/用户组名`（如 `MyOrg/Engineering`），匹配时需忽略组织前缀。
+Casdoor 用户组格式为 `组织/用户组名`（如 `MyOrg/Engineering`）。先验证组织属于当前本地租户，再按 (issuer, organization, group) 白名单匹配；不得忽略组织前缀，也不默认取数组首项。
 
 ```python
-def extract_group_name(casdoor_group: str) -> str:
-    """
-    从 Casdoor 用户组中提取组名
-    输入: "MyOrg/Engineering"
-    输出: "Engineering"
-    """
-    if "/" in casdoor_group:
-        return casdoor_group.split("/", 1)[1]
-    return casdoor_group
-
-def match_user_group(casdoor_groups: list, system_groups: list) -> str | None:
-    """
-    匹配用户组
-    1. 优先使用 Casdoor 返回的 groups 数组第一个元素
-    2. 忽略组织前缀后匹配系统用户组
-    """
-    if not casdoor_groups:
-        return None
-
-    # 取第一个用户组
-    primary_group = casdoor_groups[0]
-    group_name = extract_group_name(primary_group)
-
-    # 忽略组织前缀后匹配
-    for system_group in system_groups:
-        if extract_group_name(system_group) == group_name:
-            return system_group
-
-    return None
+def match_user_groups(
+    issuer: str,
+    organization: str,
+    casdoor_groups: list[str],
+    allowed_mapping: dict[tuple[str, str, str], str],
+) -> set[str]:
+    # 映射由服务端为当前已授权租户加载，不来自浏览器请求
+    matched = set()
+    for value in casdoor_groups:
+        owner, separator, group = value.partition("/")
+        if not separator or owner != organization or not group:
+            continue
+        local_group = allowed_mapping.get((issuer, owner, group))
+        if local_group is not None:
+            matched.add(local_group)
+    return matched
 ```
 
+无组织前缀的值须根据所用版本的可信组织字段规范化，不能猜测组织。角色映射同样保留 issuer、组织和本地租户边界。
+
 ## 3. 权限同步模式
-- **全量同步 (Full Sync)**: 用户登录时，系统会重置其在本地的所有角色归属，严格与 Casdoor 返回的 `roles` 数组一致。
-- **增量补丁 (Patch Sync)**: 用户登录时，系统仅同步 Casdoor 显式返回的角色，保留用户在本地手动被赋予的其他扩展角色。
+- **全量同步 (Full Sync)**: 仅替换当前租户内由该外部身份源管理的角色，并经过显式映射，不影响其他来源角色。
+- **增量补丁 (Patch Sync)**: 仅增补白名单映射角色，保留本地角色；此模式不自动回收上游删除的权限，须另设撤权和禁用检查。
 
 ## 4. 冲突解决策略
 - **冲突优先级**: 建议在配置中心预设冲突逻辑。例如："如果用户在 Casdoor 中被禁用，则无论其在本地系统权限如何，一律禁止登录。"
 - **默认组设置**: 对于新同步的用户，应分配一个默认的低权限组（Guest/Common），直至其 Casdoor 权限被上级更新。
 
 ## 5. 实现建议
-建议建立一张 `external_identity_mapping` 配置表，允许系统管理员通过界面将 Casdoor 的 `Group Name` 或 `Role Name` 与本地系统的 `Internal Permission Tag` 建立动态绑定关系。
+建议建立一张 `external_identity_mapping` 配置表，允许系统管理员通过界面将 Casdoor 的 `(issuer, organization, Group/Role Name)`（绑定当前本地租户） 与本地系统的 `Internal Permission Tag` 建立动态绑定关系。

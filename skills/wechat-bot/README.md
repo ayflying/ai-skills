@@ -38,7 +38,7 @@ npx skills add ayflying/ai-skills --skill wechat-bot
 
 ## 使用示例
 
-```python
+```bash
 # 测试模式运行
 python scripts/wechat_bot.py --test
 

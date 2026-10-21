@@ -75,7 +75,7 @@ python scripts/gpt_image.py i2i "把这些物品组合成一张节日礼盒产�
 
 使用一张或多张参考图生成新图：
 
-```bash
+```powershell
 python scripts/gpt_image.py edit `
   "把参考图中的产品放进极简白色摄影棚，保持产品外观一致" `
   --image product.png `

@@ -23,36 +23,37 @@ npx skills add ayflying/ai-skills --skill casdoor-integration
 GET <CASDOOR_ENDPOINT>/login/oauth/authorize
   ?client_id=<ID>
   &response_type=code
-  &redirect_uri=<自动获取的回调地址>
+  &redirect_uri=<已登记的可信回调地址>
   &scope=read:users+openid+profile+email
   &state=<随机字符串>
+  &nonce=<绑定当前登录事务的随机值>
 ```
 
-**重要**: 必须传递 `state` 参数防止 CSRF 攻击。
+**重要**：使用密码学安全随机数生成 `state` 和 OIDC `nonce`，按登录事务保存在服务端会话中，绑定浏览器会话、选定的回调地址和短有效期。构造查询参数时使用 URL 编码，不手工拼接用户输入。
 
-**回调地址自动获取（无需手动配置）**：
+**回调地址必须来自可信配置**：
 
-`redirect_uri` **不需要在代码中硬编码或单独配置**，而是根据当前请求的访问域名自动生成：
+在 Casdoor 后台逐一登记允许的完整回调 URL（包括协议、域名、端口和路径），不要用通配符放宽边界。多域名部署仅从服务端白名单选择，不直接信任 `Host`、`Referer` 或 `X-Forwarded-*`。确需代理头时，只接受已配置可信代理覆盖的值，再做完整白名单校验。
 
 ```python
-def get_callback_url(request) -> str:
-    """
-    自动从当前请求的 Host/Referer 中获取回调地址
-    规则：直接使用当前网页的协议+域名+固定路径 /auth/casdoor/callback
-    """
-    scheme = request.headers.get("X-Forwarded-Proto", "https")
-    host = request.headers.get("Host") or request.headers.get("Referer", "").split("://")[1].rstrip("/")
-    return f"{scheme}://{host}/auth/casdoor/callback"
-```
+CALLBACK_URLS = {
+    "production": "https://app.example.com/auth/casdoor/callback",
+    "development": "http://localhost:8000/auth/casdoor/callback",
+}
 
-Casdoor 后台只需配置一个通配回调路径（如 `https://*.example.com/auth/casdoor/callback`），或通过泛匹配支持多域名场景。
+
+def get_callback_url(deployment: str) -> str:
+    # deployment 来自服务端部署配置，不是浏览器参数或请求头
+    return CALLBACK_URLS[deployment]
+```
 
 ### 第二步：回调处理 (Code Exchange)
 
-1. 接收 `code` 和 `state`
-2. 交换 Token：`POST <ENDPOINT>/api/login/oauth/access_token`
-3. 获取用户信息：使用 `access_token` 调用 `<ENDPOINT>/api/get-account`
-4. 手动注入 Session
+1. 接收 `code` 和 `state`；在交换 Token 前，核对 `state` 与当前会话内登录事务一致、未过期且未使用。用原子操作一次性消费，拒绝缺失、失配、过期和重放；并发登录按事务分别保存，不用一个全局值覆盖。
+2. 交换 Token：`POST <ENDPOINT>/api/login/oauth/access_token`，使用事务中保存的同一 `redirect_uri`。支持 PKCE 的部署同时校验并传递对应 `code_verifier`。
+3. 建立会话前验证 ID Token：仅允许服务端配置的签名算法，使用可信 issuer 的公钥验签，强制校验 `iss`、`aud`、`exp`、`nonce`，并按协议检查 `nbf`、`iat`、多受众时的 `azp`。普通签名 JWT（JWS）是验签而非“解密”，不能只做 Base64 解码。
+4. 使用 `access_token` 调用可信的 `<ENDPOINT>/api/get-account` 获取资料，核对账号主体与已验证的 OIDC `sub` 的服务端映射、组织及启用状态；不得用前端提交的用户资料创建身份。
+5. 完成账号归属和租户授权检查后轮换 Session ID，再注入本地用户。任何验证失败都不建立登录态。
 
 **请求正文**:
 ```json
@@ -60,15 +61,17 @@ Casdoor 后台只需配置一个通配回调路径（如 `https://*.example.com/
   "grant_type": "authorization_code",
   "client_id": "...",
   "client_secret": "...",
-  "code": "..."
+  "code": "...",
+  "redirect_uri": "<与授权请求完全一致的可信回调URL>"
 }
 ```
 
 ### 第三步：解析用户信息（重要）
 
-从 Casdoor 响应中提取用户信息时，**必须使用 `uid` 作为登录标识**，**禁止使用 email 作为登录标识**：
+从已验证的响应提取用户信息，使用 `(issuer, organization, sub)` 作为外部身份键。`uid` / `id` 仅在当前 Casdoor 版本已确认与 `sub` 的可信映射后使用，禁止仅凭 email、用户名或跨系统同编号自动认定身份：
 
-- `uid` / `id` - **用户唯一标识，作为登录凭证**
+- `sub` - 已验签 Token 中的主体标识；与 issuer、组织共同确定外部身份
+- `uid` / `id` - 用户资料编号，不是可独立证明身份的凭证
 - `name` - 用户名
 - `email` - 邮箱（可能为空），**禁止用作登录标识**
 - `avatar` - 头像 URL
@@ -80,16 +83,16 @@ Casdoor 后台只需配置一个通配回调路径（如 `https://*.example.com/
 
 ### 工作流
 
-1. **外部 ID 查找** (最高优先级): 检查是否存在 `Casdoor Provider + ProviderUserID` 关联记录
-2. **用户编号匹配**: 通过 `uid` 查找系统现有用户
-3. **静默绑定**: 找到则建立关联关系
-4. **自动创建**: 都找不到才创建新用户
+1. **外部身份查找**：按 `(issuer, organization, sub)` 查找已有绑定，并检查对应本地账号仍可登录。
+2. **验证已有账号归属**：未绑定时，要求用户重新认证本地账号并确认绑定；仅可使用经管理员审核、可审计的可信迁移映射替代此步骤。不能凭相同 `uid`、用户名或邮箱静默合并。
+3. **原子建立绑定**：校验租户归属，为外部身份键设置唯一约束；已绑定其他账号时拒绝覆盖并人工核查。
+4. **按策略创建**：无绑定且允许该组织用户注册时创建低权限本地账号；否则拒绝登录或进入审批。
 
 ### 字段映射
 
 | Casdoor 字段 | 内部字段 | 说明 |
 | :--- | :--- | :--- |
-| `uid` | `user_id` | **唯一标识，用于登录判断** |
+| `iss` + 组织 + `sub` | 外部身份关联键 | 经验证的主体；本地 `user_id` 独立生成，不按同号合并 |
 | `name` | `username` | 用户名（可变更） |
 | `email` | `email` | **非必填**。联系方式，不用于身份判断。如果项目不使用邮箱，直接忽略不进行同步 |
 | `displayName` | `nickname` | 前端显示名称 |
@@ -104,8 +107,9 @@ Casdoor 后台只需配置一个通配回调路径（如 `https://*.example.com/
 3. **数据库兜底（仅限遗留系统强制非空限制）**：如果项目底层数据库遗留了强制邮箱非空的限制且难以修改结构，首次注册时才自动生成占位邮箱进行兜底：
 
 ```python
-def generate_fallback_email(uid: str, provider: str) -> str:
-    return f"{provider}_{uid}@placeholder.local"
+def generate_fallback_email(local_user_id: str) -> str:
+    # 本地唯一 ID；占位邮箱不用于绑定或找回密码
+    return f"user_{local_user_id}@placeholder.invalid"
 ```
 
 ## 3. 用户组与权限映射
@@ -120,17 +124,12 @@ def generate_fallback_email(uid: str, provider: str) -> str:
 
 Casdoor 用户组格式为 `组织/用户组名`（如 `MyOrg/Engineering`）：
 
-```python
-def extract_group_name(casdoor_group: str) -> str:
-    if "/" in casdoor_group:
-        return casdoor_group.split("/", 1)[1]
-    return casdoor_group
-```
+匹配必须保留 `(issuer, organization, group)` 作用域，并先验证组织是否属于当前本地租户。不得删除组织前缀后按同名组匹配，也不默认取第一个组作为主组。具体白名单示例见 [用户组映射](references/group-mapping.md)。
 
 ### 权限同步模式
 
-- **全量同步**: 用户登录时重置所有角色，严格与 Casdoor 返回的 `roles` 一致
-- **增量补丁**: 仅同步 Casdoor 返回的角色，保留本地手动扩展角色
+- **全量同步**：仅替换当前租户内由该外部身份源管理的角色，经显式映射后写入，不重置其他来源角色。
+- **增量补丁**：仅增加允许映射的角色，保留本地角色；此模式不会自动撤销上游移除的权限，需另设回收与禁用检查，不能默认把外部角色名当作管理员授权。
 
 ## 4. Session 存储冲突解决
 
@@ -148,7 +147,9 @@ OAuth 跳转前报错：`Cannot read properties of undefined (reading 'user')`
 
 ```python
 def save_session(sid, session_data):
-    user_id = session_data?.passport?.user?.id
+    passport = session_data.get("passport") or {}
+    user = passport.get("user") or session_data.get("user") or {}
+    user_id = user.get("id")
 
     if user_id:
         update_user_session_cache(user_id, sid)
@@ -159,7 +160,7 @@ def save_session(sid, session_data):
 
 ## 5. 回调 401 错误排查清单
 
-1. **回调地址自动获取**: `redirect_uri` 应从当前请求自动派生，确保与实际访问域名一致。Casdoor 后台配置的 `Redirect URLs` 应使用通配符或包含所有可能域名的列表
+1. **可信回调一致**：授权、Token 交换及后台登记使用相同的完整回调 URL；域名只从服务端白名单选择，不能为排错而接受任意请求头或通配域名。检查会话 Cookie 能否回传、`state` 是否已过期或被消费，以及 Token 的 issuer、受众和 nonce 是否正确。
 2. **容器内网络**: 确保后端容器能访问 Casdoor 服务器
 3. **Secret 转义**: 检查 `clientSecret` 是否包含特殊字符导致转义错误
 4. **协议匹配**: `http` 与 `https` 必须与 Casdoor 后台配置完全匹配
@@ -182,7 +183,7 @@ def save_session(sid, session_data):
 ## 7. 混合认证设计
 
 - **多源登录**: 前端同时提供"内置账户登录"和"SSO 登录"入口
-- **权限继承**: 关联用户同时拥有内置权限和 Casdoor 同步的新权限
+- **权限隔离**：保留各来源的角色归属，只在当前租户和显式映射策略内合并权限；外部禁用与撤权必须及时生效，不默认叠加高权限。
 
 ## 详细资源
 

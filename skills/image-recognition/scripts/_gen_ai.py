@@ -1,14 +1,21 @@
-import os, json, time, base64, subprocess, urllib.request, urllib.error
+import base64
+import json
+import os
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
 
 def get_env(name):
+    if os.environ.get(name):
+        return os.environ[name]
     out = subprocess.run(
         ["powershell", "-NoProfile", "-Command",
          f"[Environment]::GetEnvironmentVariable('{name}','User')"],
-        capture_output=True, text=True)
+        capture_output=True, text=True, timeout=10, check=True)
     return out.stdout.strip()
 
-KEY = get_env("GPT_IMAGE_API_KEY")
-BASE = get_env("GPT_IMAGE_BASE_URL").rstrip("/")
 OUT = os.path.join(os.path.dirname(__file__), "_bench_ai.png")
 
 PROMPT_CN = (
@@ -25,7 +32,11 @@ PROMPT_CN = (
 )
 
 def try_gpt_image(retries=6):
-    url = BASE + "/images/generations"
+    key = get_env("GPT_IMAGE_API_KEY")
+    base = get_env("GPT_IMAGE_BASE_URL").rstrip("/")
+    if not key or not base:
+        raise ValueError("缺少 GPT_IMAGE_API_KEY 或 GPT_IMAGE_BASE_URL 配置")
+    url = base + "/images/generations"
     for i in range(retries):
         body = json.dumps({
             "model": "gpt-image-2",
@@ -33,11 +44,12 @@ def try_gpt_image(retries=6):
             "size": "1024x1536",
         }).encode("utf-8")
         req = urllib.request.Request(url, data=body, headers={
-            "Authorization": "Bearer " + KEY,
+            "Authorization": "Bearer " + key,
             "Content-Type": "application/json",
         })
         try:
-            data = json.load(urllib.request.urlopen(req, timeout=180))
+            with urllib.request.urlopen(req, timeout=180) as response:
+                data = json.load(response)
             b64 = data["data"][0].get("b64_json")
             if b64:
                 with open(OUT, "wb") as f:
@@ -46,21 +58,24 @@ def try_gpt_image(retries=6):
                 return True
             url2 = data["data"][0].get("url")
             if url2:
-                with open(OUT, "wb") as f:
-                    f.write(urllib.request.urlopen(url2, timeout=180).read())
+                with urllib.request.urlopen(url2, timeout=180) as response:
+                    with open(OUT, "wb") as f:
+                        f.write(response.read())
                 print("OK gpt-image-2(url) ->", OUT)
                 return True
         except urllib.error.HTTPError as e:
-            msg = e.read().decode("utf-8", "ignore")[:200]
-            print(f"gpt-image-2 try{i+1} HTTP {e.code}: {msg}")
+            print(f"图片生成第 {i + 1} 次请求失败，HTTP {e.code}")
+            e.close()
             if e.code == 429:
                 time.sleep(8 * (i + 1))
                 continue
             return False
         except Exception as e:
-            print("gpt-image-2 err:", e)
+            print("图片生成失败，请检查配置、网络或响应格式。")
             time.sleep(5)
     return False
 
 if __name__ == "__main__":
-    try_gpt_image()
+    if "--confirm-paid" not in sys.argv:
+        raise SystemExit("本工具会调用图片生成接口并可能计费，确认后请添加 --confirm-paid。")
+    raise SystemExit(0 if try_gpt_image() else 1)

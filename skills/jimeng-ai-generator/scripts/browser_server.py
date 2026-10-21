@@ -3,8 +3,8 @@ from playwright.async_api import async_playwright
 import os
 import sys
 
-BROWSER_PROFILE = "D:/git/ai-skills/skills/jimeng-ai-generator/browser-profile"
-os.makedirs(BROWSER_PROFILE, exist_ok=True)
+from local_support import BROWSER_PROFILE
+
 
 
 async def keep_browser_alive():
@@ -15,6 +15,7 @@ async def keep_browser_alive():
     print("浏览器已启动，按 Ctrl+C 停止")
     print()
 
+    BROWSER_PROFILE.mkdir(parents=True, exist_ok=True)
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False, args=["--start-maximized"])
 

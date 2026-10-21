@@ -49,6 +49,9 @@ playwright-report/
 .DS_Store
 Thumbs.db
 
+# 本地代码索引（不属于技能发布资源）
+/.cg/
+
 # Python
 __pycache__/
 *.pyc

@@ -69,11 +69,11 @@ POST /v3/file/query/by-resource-ids
 2. 请求体带 `isDingtalkPM: true`（`is DingTalk PM`，即「发钉钉私信通知」）；
 3. 写请求显式带 `x-operator-id: <当前用户 userId>`，否则服务端把这次调用当成系统操作，同样不派发通知；
 4. `content` 正文里显式写出 `@对方姓名` 文本，界面上才会显示成可点的 @ 块；
-5. `renderMode` 用 `text`。官方客户端（网页版）发评论只用 `text`（富文本走 `rtf`），从不用 `markdown`；`markdown` 只出现在「项目公告」这类非评论场景。历史故障评论全部是 `markdown`，而唯一实测确认送达的跨账号评论是 `text`。
+5. `renderMode` 用 `text`。本技能对带 mention 的评论统一使用 `text`；不要把 markdown 的显示成功当作通知已派发，通知效果仍受平台版本、账号及接收人设置影响。
 
 本技能的 `comment` / `reply` / `ask` / `quick-reply` 在传 `--mention-user-id` 时会自动补上 `isDingtalkPM`、`x-operator-id`，并把 `renderMode` 自动切到 `text`；不传 `--mention-user-id` 时仍是 `markdown`。正文里的 `@姓名` 仍需调用方自己写。如显式传 `--render-mode markdown`，以调用方为准（该组合未验证能派发提醒）。
 
-实测依据（任务 `6acc5eb750a75311c36f7a29` 通知测试）：只带 `mentionUserIds` 的评论（`SELF-AT-01`、以及 `outputs/goal-task*.json` 里发给「解汕汕」的历史评论）全部没有触发提醒；补齐上述参数的跨账号评论（`API-AT-03`，`@廖玉龙`，`renderMode: text`）对方当场回复「接口通知收到」。仅 `@自己` 时 Teambition 会直接丢弃 mentions，无法用于自测。
+跨账号验证提醒时使用已授权的测试任务和接收人，并由接收人确认；仅 @自己 可能被服务端丢弃，不能验证通知是否送达。不要把真实任务 ID、姓名、历史会话或本机评测产物写入公共参考资料。
 
 ## 常用更新
 

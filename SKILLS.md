@@ -1,6 +1,6 @@
 # AI Skills 技能列表
 
-当前包含 12 个技能，以 `skills/*/SKILL.md` 为准。统一安装流程见 [SKILL_INSTALL.md](SKILL_INSTALL.md)，开发规则见 [AGENTS.md](AGENTS.md)。下方结构列出主要资源，不是每个技能都必须具备的模板。
+当前包含 10 个技能，以 `skills/*/SKILL.md` 为准。统一安装流程见 [SKILL_INSTALL.md](SKILL_INSTALL.md)，开发规则见 [AGENTS.md](AGENTS.md)。下方结构列出主要资源，不是每个技能都必须具备的模板。
 
 ## 技能目录结构
 
@@ -10,47 +10,40 @@ ai-skills/
 ├── SKILLS.md              # 技能列表（本文件）
 ├── .gitignore             # Git 忽略文件
 └── skills/
-    └── opencode-api/      # OpenCode API 技能
-        ├── SKILL.md       # 技能核心文档
-        └── scripts/       # Python 脚本
-    └── minimax-api/       # MiniMax 多模态 AI 技能
+    ├── minimax-api/       # MiniMax 多模态 AI 技能
         ├── SKILL.md       # 技能核心文档
         ├── references/    # API 指南和模型列表
         └── scripts/       # Python 客户端
-    └── baota-panel/       # 宝塔面板管理技能
+    ├── baota-panel/       # 宝塔面板管理技能
         ├── SKILL.md       # 技能核心文档
         ├── references/    # 模块化参考文档
         └── scripts/       # API 脚本
-    └── casdoor-integration/ # Casdoor SSO 集成指南
+    ├── casdoor-integration/ # Casdoor SSO 集成指南
         ├── SKILL.md       # 技能核心文档
         └── references/    # 集成指南资源
-    └── wechat-bot/        # 微信机器人技能
+    ├── wechat-bot/        # 微信机器人技能
         ├── SKILL.md       # 技能核心文档
         ├── scripts/       # Python 脚本
         └── .env.example   # 配置模板
-    └── jimeng-ai-generator/ # 即梦 AI 批量生成技能
+    ├── jimeng-ai-generator/ # 即梦 AI 批量生成技能
         ├── SKILL.md       # 技能核心文档
         ├── assets/        # 浏览器扩展
         └── scripts/       # 任务服务器
-    └── gpt-image/         # OpenAI GPT Image 系列画图技能
+    ├── gpt-image/         # OpenAI GPT Image 系列画图技能
         ├── SKILL.md       # 技能核心文档
         ├── README.md      # 技能说明
         ├── .env.example   # 配置模板
         └── scripts/       # Python 脚本
-    └── ollama/            # Ollama 本地模型调用
-        ├── SKILL.md       # 技能核心文档
-        ├── scripts/       # Python 脚本
-        └── .env.example   # 配置模板
-    └── gitea-weekly-report/ # Gitea 周报生成技能
+    ├── gitea-weekly-report/ # Gitea 周报生成技能
         ├── SKILL.md       # 技能核心文档
         └── README.md      # 技能说明
-    └── teambition-bug/    # Teambition Bug 直连 API 技能
+    ├── teambition-bug/    # Teambition Bug 直连 API 技能
         ├── SKILL.md       # 技能核心文档
         ├── README.md      # 技能说明
         ├── .env.example   # 配置模板
         ├── references/    # API 参考
         └── scripts/       # Python 脚本
-    └── image-recognition/ # 图片识别省 token 技能
+    ├── image-recognition/ # 图片识别省 token 技能
         ├── SKILL.md       # 技能核心文档
         └── scripts/       # Python 脚本
     └── website-function-mapper/ # 网站功能复刻侦察技能
@@ -61,18 +54,6 @@ ai-skills/
 ```
 
 ## 技能详情
-
-### opencode-api
-
-**描述**: 连接 OpenCode 服务器执行 AI 任务
-
-**功能**:
-- 连接到运行中的 OpenCode 服务器
-- 执行 AI 驱动的任务指令
-- 返回执行结果（支持 JSON 格式）
-
-**使用方式**:
-详见 `skills/opencode-api/SKILL.md`
 
 ### minimax-api
 
@@ -86,20 +67,20 @@ ai-skills/
 - 音乐生成
 
 **使用方式**:
-详见 `skills/minimax-api/SKILL.md`
+详见 [技能说明](skills/minimax-api/SKILL.md)
 
 ### baota-panel
 
-**描述**: 通过宝塔面板 API 管理服务器资源，具备自动绕过防火墙和 Session 嗅探能力。
+**描述**: 通过宝塔面板 API 管理服务器资源，高权限操作和登录态读取须显式授权。
 
 **功能**:
 - 网站管理、Docker 监控、数据库运维
 - 远程文件系统读写、压缩与回收站
-- **稳健模式**: 自动通过计划任务执行被防火墙拦截的命令
-- **Socket 支持**: 自动提取 `x-http-token` 跑通编排接口
+- **稳健模式**：仅在明确授权后使用计划任务执行命令，不自动绕过访问控制
+- **Socket 支持**：经显式授权读取登录态后调用编排接口
 
 **使用方式**:
-详见 `skills/baota-panel/SKILL.md`
+详见 [技能说明](skills/baota-panel/SKILL.md)
 
 ### casdoor-integration
 
@@ -112,7 +93,7 @@ ai-skills/
 - 前端构建陷阱与环境变量注入方案
 
 **使用方式**:
-详见 `skills/casdoor-integration/SKILL.md`
+详见 [技能说明](skills/casdoor-integration/SKILL.md)
 
 ### wechat-bot
 
@@ -126,20 +107,20 @@ ai-skills/
 - 内置命令支持（help、status、stats、export）
 
 **使用方式**:
-详见 `skills/wechat-bot/SKILL.md`
+详见 [技能说明](skills/wechat-bot/SKILL.md)
 
 ### jimeng-ai-generator
 
-**描述**: 即梦 AI 批量生成任务自动化，通过原生浏览器插件避开风控。
+**描述**: 即梦 AI 批量生成任务自动化，通过浏览器扩展与本地任务服务协作。
 
 **功能**:
 - 批量处理文生图、图生图、视频生成
-- 完美继承用户登录态与硬件指纹
+- 复用用户当前浏览器登录态，仍受网站权限、风控与限流约束
 - 内置 PNA 协议支持 HTTPS 直接调用本地接口
 - 全自动循环任务分发与结果监控
 
 **使用方式**:
-详见 `skills/jimeng-ai-generator/SKILL.md`
+详见 [技能说明](skills/jimeng-ai-generator/SKILL.md)
 
 ### gpt-image
 
@@ -153,35 +134,22 @@ ai-skills/
 - 自动处理 GPT Image API 返回的 base64 图片数据
 
 **使用方式**:
-详见 `skills/gpt-image/SKILL.md`
-
-### ollama
-
-**描述**: 调用 Ollama 本地模型，支持特定实例和模型（如 qwen3.5:9b）。
-
-**功能**:
-- 通过 Python 脚本调用 Ollama API
-- 支持文本生成和多模型选择
-- 灵活配置 API 地址和默认模型
-- 可集成到其他 AI 工作流中
-
-**使用方式**:
-详见 `skills/ollama/SKILL.md`
+详见 [技能说明](skills/gpt-image/SKILL.md)
 
 ### gitea-weekly-report
 
-**描述**: 获取一个或多个 Gitea 组织内项目的工作日志，遍历全部分支提交，并自动转换为用户能看懂的功能点。
+**描述**: 获取一个或多个 Gitea 组织内项目的工作日志，分页遍历当前凭证可见的全部分支提交，并自动转换为用户能看懂的功能点；报告权限或请求失败造成的覆盖缺口。
 
 **功能**:
-- 自动查询一个或多个 Gitea 组织下的所有仓库
-- 先读取仓库分支列表，再遍历全部分支提交并按 SHA 去重
+- 分页查询一个或多个 Gitea 组织下当前凭证可见的仓库
+- 分页读取仓库分支列表，再遍历可见分支提交并按 SHA 去重
 - 根据自然周时间范围过滤 commit 记录，并明确输出日期范围
 - 支持仓库列表接口 fallback 与 lookback 遗漏检查
 - 将技术描述自动转换为 C端业务功能说明
 - 生成格式化的 Markdown 周报
 
 **使用方式**:
-详见 `skills/gitea-weekly-report/SKILL.md`
+详见 [技能说明](skills/gitea-weekly-report/SKILL.md)
 
 ### teambition-bug
 
@@ -197,7 +165,7 @@ ai-skills/
 - 更新标题、备注、执行人、优先级、截止时间和缺陷分类
 
 **使用方式**:
-详见 `skills/teambition-bug/SKILL.md`
+详见 [技能说明](skills/teambition-bug/SKILL.md)
 
 ### image-recognition
 
@@ -211,7 +179,7 @@ ai-skills/
 - 配置只读系统环境变量（无 `.env`），首次缺 Key/地址/模型时引导用户输入
 
 **使用方式**:
-详见 `skills/image-recognition/SKILL.md`
+详见 [技能说明](skills/image-recognition/SKILL.md)
 
 ### website-function-mapper
 
@@ -226,7 +194,7 @@ ai-skills/
 - 默认安全侦察，不提交表单，不执行删除、支付、发送、发布等高风险动作
 
 **使用方式**:
-详见 `skills/website-function-mapper/SKILL.md`
+详见 [技能说明](skills/website-function-mapper/SKILL.md)
 
 ## 如何添加新技能
 

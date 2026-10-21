@@ -235,7 +235,8 @@ class WeChatBot:
                 return sender.nick_name
             else:
                 return str(sender)
-        except:
+        except Exception as exc:
+            self.logger.warning("读取发送者名称失败（%s），使用匿名名称", type(exc).__name__)
             return "未知用户"
 
     def record_message(self, sender: str, msg_type: str, content: str):

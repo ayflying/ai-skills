@@ -4,11 +4,12 @@
 
 ## 1. 登录流实现模式 (手动模式)
 推荐使用手动构建请求而非全自动 SDK 插件，以确保对流程的完全控制：
-- **第一步 (跳转)**: 引导用户访问 `GET <CASDOOR_ENDPOINT>/login/oauth/authorize`，必须显式传递 `state` 参数以防止 CSRF 攻击。
+- **第一步 (跳转)**: 引导用户访问 `GET <CASDOOR_ENDPOINT>/login/oauth/authorize`，使用可信配置中的精确回调 URL，生成随机 `state`、`nonce`，绑定服务端会话及短有效期。
 - **第二步 (回调)**: 
-  1. 接收 `code` 和 `state`。
-  2. 以后端身份向 Token 端点发起 POST 请求交换 `access_token`。
-  3. 调用 Casdoor 接口获取标准化用户信息。
+  1. 交换前强制验证当前会话事务中的 state、一致性、有效期和未使用状态，并原子消费；缺失、失配、重放拒绝，并发登录分事务保存。
+  2. 向可信 Token 端点交换令牌，使用同一 redirect_uri；启用 PKCE 时提交对应 code_verifier。
+  3. 强制验签与校验 ID Token 的 iss、aud、exp、nonce 等 claims，再核对可信账号接口的主体、组织及启用状态，详见 [跨语言实现](implementation-logic.md)。
+  4. 按 (issuer, organization, sub) 查找绑定，证明账号归属并通过租户授权后轮换 Session ID，再建立登录态。
 
 ## 2. 核心架构陷阱：Session 存储冲突
 **问题场景**: 系统在 OAuth 重定向之前报错，提示无法读取用户信息或 Session 保存失败。

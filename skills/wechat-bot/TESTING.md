@@ -40,7 +40,7 @@ cat .env
 ## 3. 功能测试
 
 ### 3.1 测试配置加载
-```python
+```bash
 # 创建测试脚本
 python -c "
 from scripts.wechat_bot import WeChatBot

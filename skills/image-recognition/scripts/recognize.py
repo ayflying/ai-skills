@@ -111,13 +111,16 @@ def build_image_url(target: str) -> str:
         return target
 
     path = Path(target)
-    if not path.exists():
+    if not path.is_file():
         raise RuntimeError(f"找不到图片文件：{target}")
 
     mime, _ = mimetypes.guess_type(path.name)
     if not mime or not mime.startswith("image/"):
         mime = "image/png"
-    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+    try:
+        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+    except OSError as exc:
+        raise RuntimeError("无法读取本地图片，请检查路径和读取权限。") from exc
     return f"data:{mime};base64,{encoded}"
 
 
@@ -144,28 +147,45 @@ def recognize_one(config: dict[str, str], target: str, args: argparse.Namespace)
         "Content-Type": "application/json",
         "Authorization": f"Bearer {config['api_key']}",
     }
-    response = requests.post(
-        f"{config['base_url']}/chat/completions",
-        headers=headers,
-        json=payload,
-        timeout=args.timeout,
-    )
-    if not response.ok:
-        try:
-            data = response.json()
-            message = data.get("error", {}).get("message") or response.text
-        except ValueError:
-            message = response.text
-        raise RuntimeError(f"视觉接口请求失败 ({response.status_code}): {message}")
+    try:
+        with requests.post(
+            f"{config['base_url']}/chat/completions",
+            headers=headers, json=payload, timeout=args.timeout, allow_redirects=False,
+        ) as response:
+            if not 200 <= response.status_code < 300:
+                raise RuntimeError(f"视觉接口请求失败（HTTP {response.status_code}）。")
+            try:
+                data = response.json()
+            except ValueError as exc:
+                raise RuntimeError("视觉接口返回无效 JSON。") from exc
+    except requests.exceptions.Timeout as exc:
+        raise RuntimeError("视觉接口请求超时。") from exc
+    except requests.exceptions.RequestException as exc:
+        raise RuntimeError(f"视觉接口请求失败（{type(exc).__name__}）。") from exc
 
-    data = response.json()
-    choices = data.get("choices") or []
-    if not choices:
+    if not isinstance(data, dict):
+        raise RuntimeError("视觉接口响应必须是 JSON 对象。")
+    choices = data.get("choices")
+    if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
         raise RuntimeError("响应中没有可用的识别结果。")
-    content = (choices[0].get("message") or {}).get("content")
-    if not content or not str(content).strip():
+    message = choices[0].get("message")
+    if not isinstance(message, dict):
+        raise RuntimeError("视觉接口响应中的 message 格式无效。")
+    content = message.get("content")
+    if not isinstance(content, str) or not content.strip():
         raise RuntimeError("视觉模型未返回文字内容。")
-    return str(content).strip()
+    return content.strip()
+
+
+def positive_int(value: str) -> int:
+    """拒绝非正数，避免无效的超时和输出预算。"""
+    try:
+        number = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("必须是正整数") from exc
+    if number <= 0:
+        raise argparse.ArgumentTypeError("必须是正整数")
+    return number
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -185,12 +205,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--max-tokens",
-        type=int,
+        type=positive_int,
         default=500,
         help="单图回答的最大 token 数，默认 500",
     )
     parser.add_argument(
-        "--timeout", type=int, default=120, help="请求超时时间（秒），默认 120"
+        "--timeout", type=positive_int, default=120, help="请求超时时间（秒），默认 120"
     )
     return parser
 

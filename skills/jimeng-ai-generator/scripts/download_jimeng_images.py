@@ -6,10 +6,7 @@ import shutil
 from datetime import datetime
 from PIL import Image
 
-OUTPUT_DIR = "D:/git/ai-skills/skills/jimeng-ai-generator/outputs"
-BROWSER_PROFILE = "D:/git/ai-skills/skills/jimeng-ai-generator/browser-profile"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(BROWSER_PROFILE, exist_ok=True)
+from local_support import OUTPUT_DIR, BROWSER_PROFILE
 
 
 async def download_jimeng_images(prompt=None, max_images=20):
@@ -17,6 +14,7 @@ async def download_jimeng_images(prompt=None, max_images=20):
     print("即梦AI图片下载工具 v4.0 (VIP)")
     print("=" * 50)
 
+    BROWSER_PROFILE.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     session_dir = os.path.join(OUTPUT_DIR, f"download_{timestamp}")
     os.makedirs(session_dir, exist_ok=True)

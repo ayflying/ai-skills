@@ -2,7 +2,7 @@
 
 ## 1. 项目概述
 
-本仓库是遵循 [Agent Skills 规范](https://agentskills.io)的独立技能集合，不是单一服务。目前包含 12 个技能，以 Python 脚本、参考文档和浏览器资源为主；实际技能以 `skills/*/SKILL.md` 为准。
+本仓库是遵循 [Agent Skills 规范](https://agentskills.io)的独立技能集合，不是单一服务。目前包含 10 个技能，以 Python 脚本、参考文档和浏览器资源为主；实际技能以 `skills/*/SKILL.md` 为准。
 
 - `skills/`：技能目录。
 - `README.md`：项目介绍与技能入口。
@@ -18,7 +18,7 @@
 # 列出可用技能
 npx skills add ayflying/ai-skills --list
 # 安装一个现有技能
-npx skills add ayflying/ai-skills --skill opencode-api
+npx skills add ayflying/ai-skills --skill teambition-bug
 # 安装全部技能
 npx skills add ayflying/ai-skills
 ```
@@ -42,7 +42,6 @@ python -m pip install -r requirements.txt
 已有单元测试示例（从仓库根目录运行）：
 
 ```bash
-python -m unittest discover -s skills/ollama/scripts -p "test_ollama.py"
 python -m unittest discover -s skills/teambition-bug/scripts -p "test_teambition_bug.py"
 ```
 

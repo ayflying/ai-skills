@@ -4,16 +4,16 @@
 
 ## 1. 核心原则
 
-**用户编号是登录的唯一标识**，邮箱仅作为联系方式，不作为用户身份判断依据。
+**使用已验证的 (issuer, organization, sub) 作为外部身份键**，本地 ID 独立生成。资料 uid/id 先确认与 sub 的可信映射；同号或同邮箱不证明账号归属。
 
 ## 2. 自动关联工作流 (Account Linking)
 
 系统在处理 Casdoor 登录成功的回调后，应执行以下级联查找逻辑：
 
-1. **外部 ID 查找 (最高优先级)**: 检查本地数据库中是否已存在关联此 `Casdoor Provider + ProviderUserID` 的记录。
-2. **用户编号匹配**: 如果未找到外部绑定，尝试通过 Casdoor 返回的 `uid` (用户编号) 查找系统现有的内置用户。
-3. **静默绑定**: 如果找到同编号用户，将其本地 ID 与 Casdoor ID 建立关联关系。
-4. **自动创建**: 仅当上述两步都失败时，才创建全新的本地用户记录。
+1. **外部身份查找**：按 (issuer, organization, sub) 查询唯一绑定，检查本地账号可用状态。
+2. **证明账号归属**：未绑定时要求用户重新认证本地账号并确认，或采用管理员已审核且可审计的迁移映射，不凭 uid、用户名或 email 相同静默合并。
+3. **原子绑定**：验证两端组织与本地租户映射，为外部身份键设唯一约束；冲突时拒绝覆盖并人工核查。
+4. **受控创建**：仅在当前组织允许自动注册时创建低权限账号，否则审批或拒绝登录。
 
 **重要**: 不再使用邮箱作为用户关联判断依据，邮箱仅用于展示和通知。
 
@@ -31,37 +31,24 @@
 如果项目底层数据库遗留了强制邮箱非空的限制（如旧版系统的 `NOT NULL` 约束）且短期内难以修改表结构，**仅在此种情况下**，首次注册时才自动生成唯一的占位邮箱进行兜底：
 
 ```python
-def generate_fallback_email(user_id: str, provider: str) -> str:
-    """
-    仅用于遗留系统强制要求邮箱非空时的兜底方案
-    格式: {provider}_{user_id}@placeholder.local
-    """
-    FALLBACK_EMAIL_DOMAIN = "placeholder.local"
-    return f"{provider}_{user_id}@{FALLBACK_EMAIL_DOMAIN}"
+def generate_fallback_email(local_user_id: str) -> str:
+    """用本地唯一 ID 生成不可投递占位邮箱，不用于找回密码。"""
+    return f"user_{local_user_id}@placeholder.invalid"
 
-def process_casdoor_user(user_info: dict) -> dict:
-    """
-    处理 Casdoor 用户信息
-    用户编号 (uid) 是唯一标识，邮箱仅作联系用途（如不需要可直接丢弃）
-    """
-    uid = user_info.get("uid") or user_info.get("id")
-    email = user_info.get("email")
 
-    if not uid:
-        raise ValueError("用户编号 (uid) 是必填字段")
-
-    # 如果系统强制要求邮箱，且当前用户无邮箱，则生成兜底邮箱
-    if not email or email.strip() == "":
-        user_info["email"] = generate_fallback_email(uid, user_info.get("type", "unknown"))
-
-    return user_info
+def process_casdoor_user(user_info: dict, local_user_id: str, require_email: bool = False) -> dict:
+    """仅在认证、归属和租户校验完成后规范化展示资料。"""
+    result = dict(user_info)
+    if require_email and not str(result.get("email") or "").strip():
+        result["email"] = generate_fallback_email(local_user_id)
+    return result
 ```
 
 ## 4. 字段映射标准
 
 | 外部字段 (Casdoor) | 内部字段 | 说明 |
 | :--- | :--- | :--- |
-| `uid` | `user_id` | **用户唯一标识**，用于登录判断 |
+| iss + 组织 + sub | 外部身份关联键 | 已验证主体，不覆盖本地用户 ID |
 | `name` | `username` | 用户名（可变更） |
 | `email` | `email` | **非必填**。联系方式，千万不能用于身份判断。如果项目不使用邮箱，直接忽略不进行同步。 |
 | `displayName` | `nickname` | 前端显示的友好名称 |
@@ -70,4 +57,4 @@ def process_casdoor_user(user_info: dict) -> dict:
 ## 5. 混合认证设计建议
 
 - **多源登录**: 前端登录界面应同时提供"内置账户登录"和"SSO 登录"入口。
-- **权限继承**: 关联后的用户应同时拥有其在内置系统中原有的权限以及根据 Casdoor 角色新同步的权限。
+- **权限隔离**：按来源和租户保存授权，只合并明确允许的映射，不因关联而提升为管理员；上游禁用和撤权须有回收策略。

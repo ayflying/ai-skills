@@ -5,11 +5,8 @@ import re
 import random
 from datetime import datetime
 
-OUTPUT_DIR = "D:/git/ai-skills/skills/jimeng-ai-generator/outputs"
-BROWSER_PROFILE = "D:/git/ai-skills/skills/jimeng-ai-generator/browser-profile"
+from local_support import OUTPUT_DIR, BROWSER_PROFILE
 STORAGE_STATE = os.path.join(BROWSER_PROFILE, "storageState.json")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(BROWSER_PROFILE, exist_ok=True)
 
 # 随机提示词池
 RANDOM_PROMPTS = [
@@ -81,6 +78,7 @@ async def auto_generate_and_download(
     print(f"即梦AI自动生成工具 - 模型: {model_version}")
     print("=" * 60)
 
+    BROWSER_PROFILE.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     session_dir = os.path.join(OUTPUT_DIR, f"auto_{timestamp}")
     os.makedirs(session_dir, exist_ok=True)

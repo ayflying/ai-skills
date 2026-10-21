@@ -1,15 +1,27 @@
 import hashlib
-import time
-import requests
 import json
+import logging
 import os
+import re
 import sys
+import time
+
+import requests
+
+
+logger = logging.getLogger(__name__)
 
 
 class BTPanelAPI:
-    def __init__(self, panel_url, api_key):
+    def __init__(
+        self, panel_url, api_key, *, ca_bundle=None,
+        allow_session_access=False, allow_crontab_fallback=False,
+    ):
         self.panel_url = panel_url.rstrip("/")
         self.api_key = api_key
+        self.verify = ca_bundle or os.getenv("BT_CA_BUNDLE") or True
+        self.allow_session_access = allow_session_access
+        self.allow_crontab_fallback = allow_crontab_fallback
         self.x_http_token = None
         self._session_cookie = None
 
@@ -22,15 +34,17 @@ class BTPanelAPI:
         return now_time, token
 
     def refresh_x_token(self):
-        """强制通过服务器文件系统嗅探获取有效的 x-http-token 和 Session ID"""
+        """仅在显式授权后读取面板登录态；失败时保留可定位的日志。"""
+        if not self.allow_session_access:
+            logger.warning("未授权读取面板登录态，请使用标准 API 或显式授权")
+            return False
         # 1. 读取 sid.pl (Session ID)
         sid_res = self.get_file_content("/www/server/panel/data/sid.pl")
-        if sid_res.get("status") and sid_res.get("data"):
+        if isinstance(sid_res, dict) and sid_res.get("status") and isinstance(sid_res.get("data"), str):
             self._session_cookie = sid_res["data"].strip()
 
         # 2. 从 session 目录嗅探 x-http-token
-        # 我们读取最近修改的 5 个 session 文件进行正则表达式匹配
-        import re
+        # 读取最近修改的 10 个 session 文件进行正则表达式匹配
 
         try:
             # 这里的 get_files 只能列出文件，我们需要具体读取内容
@@ -61,13 +75,12 @@ class BTPanelAPI:
                             if not self._session_cookie:
                                 self._session_cookie = f_name
                             return True
-        except:
-            pass
+        except (ValueError, IndexError, TypeError, AttributeError) as exc:
+            logger.warning("面板登录态响应格式异常（%s），无法提取令牌", type(exc).__name__)
         return False
 
     def request(self, action_path, params=None, use_token=False):
-        if params is None:
-            params = {}
+        params = dict(params) if params is not None else {}
 
         # 构造基础参数
         now_time, token = self._get_token()
@@ -88,42 +101,34 @@ class BTPanelAPI:
         headers = {}
         cookies = {}
         if use_token:
-            if not self.x_http_token:
-                self.refresh_x_token()
+            if not self.x_http_token and not self.refresh_x_token():
+                return {"status": False, "msg": "未获得面板登录态令牌；需明确授权读取登录态，或使用标准 API"}
             if self.x_http_token:
                 headers["x-http-token"] = self.x_http_token
             if self._session_cookie:
                 cookies["session"] = self._session_cookie
 
         try:
-            import urllib3
-
-            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-            response = requests.post(
-                url,
-                data=params,
-                headers=headers,
-                cookies=cookies,
-                verify=False,
-                timeout=30,
-            )
-
-            if not response.text:
-                return {
-                    "status": False,
-                    "msg": "Empty response from server (possible firewall block)",
-                }
-
-            try:
-                return response.json()
-            except:
-                return {
-                    "status": False,
-                    "msg": "Invalid JSON",
-                    "raw": response.text[:500],
-                }
-        except Exception as e:
-            return {"status": False, "msg": str(e)}
+            with requests.post(
+                url, data=params, headers=headers, cookies=cookies,
+                verify=self.verify, timeout=30, allow_redirects=False,
+            ) as response:
+                if not 200 <= response.status_code < 300:
+                    return {"status": False, "msg": f"面板接口 HTTP {response.status_code}"}
+                if not response.content:
+                    return {"status": False, "msg": "面板接口返回空响应", "error": "empty_response"}
+                try:
+                    return response.json()
+                except ValueError:
+                    return {"status": False, "msg": "面板接口返回无效 JSON"}
+        except requests.exceptions.SSLError:
+            return {"status": False, "msg": "面板 TLS 证书校验失败，请核对域名并配置 BT_CA_BUNDLE 可信 CA"}
+        except requests.exceptions.Timeout:
+            return {"status": False, "msg": "面板接口请求超时"}
+        except requests.exceptions.RequestException as exc:
+            return {"status": False, "msg": f"面板接口请求失败（{type(exc).__name__}）"}
+        except OSError:
+            return {"status": False, "msg": "无法读取面板可信 CA 文件，请检查 BT_CA_BUNDLE 配置"}
 
     # --- Site Management ---
     def get_sites(self, page=1, limit=20):
@@ -533,13 +538,15 @@ class BTPanelAPI:
         return self.request("/files?action=ExecShell", {"command": command})
 
     def robust_exec_shell(self, command, timeout=10):
-        """稳健执行 Shell 命令：如果直接执行被防火墙拦截，自动降级为 Crontab 代理模式"""
+        """执行 Shell；仅在显式授权后对空响应尝试计划任务代理。"""
         res = self.exec_shell(command)
         if (
             isinstance(res, dict)
-            and res.get("msg") == "Empty response from server (possible firewall block)"
+            and res.get("error") == "empty_response"
         ):
-            # 自动降级为 Crontab 代理执行
+            if not self.allow_crontab_fallback:
+                return {"status": False, "msg": "Shell 返回空响应，未授权计划任务代理；请先核对权限与安全策略"}
+            # 已显式授权才使用计划任务代理执行
             import time
 
             task_name = f"proxy_task_{int(time.time())}"
@@ -601,24 +608,28 @@ class BTPanelAPI:
 if __name__ == "__main__":
     PANEL_URL = os.getenv("BT_PANEL_URL", "https://192.168.50.243:8888")
     API_KEY = os.getenv("BT_API_KEY")
-    if not API_KEY:
+    CA_BUNDLE = os.getenv("BT_CA_BUNDLE")
+    if not API_KEY or not CA_BUNDLE or not os.getenv("BT_PANEL_URL"):
         try:
             env_path = os.path.join(os.path.dirname(__file__), "../.env")
             if os.path.exists(env_path):
-                with open(env_path, "r") as f:
+                with open(env_path, "r", encoding="utf-8") as f:
                     for line in f:
                         if "=" in line:
                             k, v = line.split("=", 1)
-                            if k.strip() == "BT_API_KEY":
+                            if k.strip() == "BT_API_KEY" and not API_KEY:
                                 API_KEY = v.strip().strip('"').strip("'")
-                            if k.strip() == "BT_PANEL_URL":
+                            if k.strip() == "BT_PANEL_URL" and not os.getenv("BT_PANEL_URL"):
                                 PANEL_URL = v.strip().strip('"').strip("'")
-        except:
-            pass
+                            if k.strip() == "BT_CA_BUNDLE" and not CA_BUNDLE:
+                                CA_BUNDLE = v.strip().strip('"').strip("'")
+        except (OSError, UnicodeError):
+            print(json.dumps({"status": False, "msg": "无法读取宝塔 .env 配置"}, ensure_ascii=False), file=sys.stderr)
+            sys.exit(1)
     if not API_KEY:
         print(json.dumps({"status": False, "msg": "BT_API_KEY not set"}))
         sys.exit(1)
-    api = BTPanelAPI(PANEL_URL, API_KEY)
+    api = BTPanelAPI(PANEL_URL, API_KEY, ca_bundle=CA_BUNDLE)
     if len(sys.argv) < 2:
         print(json.dumps(api.request("/system?action=GetSystemTotal"), indent=2))
     else:

@@ -19,7 +19,8 @@ npx skills add ayflying/ai-skills --skill minimax-api
 
 1. 注册 MiniMax API 平台：https://platform.minimaxi.com
 2. 创建 API Key：https://platform.minimaxi.com/user-center/basic-information/interface-key
-3. 在技能目录下创建 `.env` 文件（复制 `.env.example` 并填入 API Key）
+3. 设置 `MINIMAX_API_KEY` 环境变量；如需使用 `.env`，安装 `python-dotenv` 后复制 `.env.example` 并在本机填写，勿提交凭证。
+4. HTTP 功能需要 `requests`，WebSocket 语音合成另外需要支持 `additional_headers` 的 `websockets` 版本（如 14+）。
 
 ## 环境变量
 
@@ -31,7 +32,7 @@ MINIMAX_API_HOST=https://api.minimaxi.com  # 国内版
 
 ## 脚本使用方式
 
-所有命令需要在技能目录下执行（因为脚本依赖 `.env` 文件）：
+以下示例从技能目录执行；使用系统环境变量时不依赖 `.env`，也可从仓库根目录指定脚本完整相对路径：
 
 ```bash
 cd skills/minimax-api
@@ -129,6 +130,10 @@ python scripts/minimax.py tts-ws "要转换的文本" --speed 1.2 --pitch 0 -o o
 - `--format` - 音频格式 (mp3/wav/pcm)
 - `--bitrate` - 比特率 (默认 128000)
 - `--sample-rate` - 采样率 (默认 32000)
+- `--recv-timeout` - 单次接收超时秒数（默认 30）
+- `--total-timeout` - 整个语音任务超时秒数（默认 300，包含握手、发送和接收）
+
+保持默认 TLS 证书与主机名校验；证书错误时修复证书链，不关闭校验。API 请求不自动跟随 HTTP 重定向，避免将请求正文重放到其他地址；遇到重定向时核对并直接配置可信的最终接口地址。媒体下载使用连接/读取超时，完整下载后才替换目标文件；缺少下载地址、下载失败或接口返回业务错误均以非零退出码结束，不报告保存成功。多张图片指定 `-o` 时追加序号，避免相互覆盖。
 
 ### 视频生成
 

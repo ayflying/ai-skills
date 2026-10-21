@@ -13,7 +13,7 @@
 npx skills add ayflying/ai-skills --list
 
 # 安装一个技能
-npx skills add ayflying/ai-skills --skill opencode-api
+npx skills add ayflying/ai-skills --skill teambition-bug
 
 # 安装全部技能
 npx skills add ayflying/ai-skills
@@ -23,18 +23,16 @@ npx skills add ayflying/ai-skills
 
 ## 3. 当前技能
 
-以下 12 个技能均以各自 `SKILL.md` 为安装和使用入口：
+以下 10 个技能均以各自 `SKILL.md` 为安装和使用入口：
 
 | 技能 | 用途 |
 |------|------|
-| [opencode-api](skills/opencode-api/SKILL.md) | 连接 OpenCode 服务器执行 AI 任务 |
 | [minimax-api](skills/minimax-api/SKILL.md) | MiniMax 文本、语音、图像、视频与音乐 API |
 | [baota-panel](skills/baota-panel/SKILL.md) | 宝塔面板资源管理 |
 | [casdoor-integration](skills/casdoor-integration/SKILL.md) | Casdoor 单点登录与权限集成 |
 | [wechat-bot](skills/wechat-bot/SKILL.md) | 微信个人机器人 |
 | [jimeng-ai-generator](skills/jimeng-ai-generator/SKILL.md) | 即梦批量生成任务自动化 |
 | [gpt-image](skills/gpt-image/SKILL.md) | GPT Image 图片生成与编辑 |
-| [ollama](skills/ollama/SKILL.md) | Ollama 本地模型调用 |
 | [gitea-weekly-report](skills/gitea-weekly-report/SKILL.md) | Gitea 项目工作周报 |
 | [teambition-bug](skills/teambition-bug/SKILL.md) | Teambition 缺陷查询与处理 |
 | [image-recognition](skills/image-recognition/SKILL.md) | 图片识别、OCR 与截图理解 |
@@ -60,7 +58,7 @@ python -m pip install -r requirements.txt
 
 - 仅在提供 `.env.example` 且技能说明要求时复制为 `.env`，填入本机配置。
 - `image-recognition` 使用系统环境变量，不统一改成 `.env`。
-- OpenCode、Ollama、宝塔等技能需准备对应的服务地址和授权。
+- 宝塔、Teambition 等技能需准备对应的服务地址和授权。
 - 仅文档型技能不一定需要执行脚本。
 - 不把凭证、浏览器登录态或真实业务数据写入可提交的模板，详见 [SECURITY.md](SECURITY.md)。
 

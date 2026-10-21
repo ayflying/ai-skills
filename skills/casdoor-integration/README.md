@@ -19,6 +19,10 @@ npx skills add ayflying/ai-skills --skill casdoor-integration
 - ✅ **组织架构同步**: 深度映射 Casdoor Organization 和 Group。
 - ✅ **避坑指南**: 解决 Session 竞争、静态构建环境变量注入等实战陷阱。
 
+## 安全边界
+
+使用服务端登记的精确回调地址；state 绑定会话并一次性校验消费；建立会话前强制验签及校验 Token claims。账号关联需证明归属，身份与组/角色映射必须保留 issuer、组织及租户作用域。具体规则和示例见 [技能正文](SKILL.md)。
+
 ## 详细资源
 
 此技能包含以下模块化文档：

@@ -48,41 +48,26 @@ pip install -r requirements.txt
 3. 在页面中创建或查看 `userToken`
 4. 复制 `userToken`，不要复制应用 token、App Secret 或浏览器请求里的临时值
 
-### 存储方式（二选一）
+### 安全配置方式
 
-获取到参数后，有两种存储方式，请询问用户选择哪种：
+不要要求用户将 userToken 发到对话、截图或工具日志。由用户在本机安全终端输入；环境变量或本地 `.env` 都是凭证存储，不是加密保险箱，须限制账号和文件访问权限。
 
-**方式一：仅当前对话使用（推荐首次尝试）**
+**临时使用（仅当前 PowerShell 进程及其子进程）**：
 
-直接在对话中告诉 AI 这两个值，AI 会将它们作为环境变量传递给脚本。关闭对话后失效，不污染系统环境。
-
-示例对话：
-```
-我的 Teambition 参数：
-- TENANT_ID: 5f1234567890abcdef123456
-- USER_TOKEN: eyJhbGciOiJIUzI1NiIs...
-```
-
-AI 会自动在每次调用脚本时带上这些参数。
-
-**方式二：保存到电脑环境变量（持久化，所有对话可用）**
-
-如果用户希望以后每个对话都能直接使用，需要将参数写入系统环境变量。
-
-Windows PowerShell（管理员）：
 ```powershell
-[Environment]::SetEnvironmentVariable("TEAMBITION_TENANT_ID", "<你的企业ID>", "User")
-[Environment]::SetEnvironmentVariable("TEAMBITION_USER_TOKEN", "<你的token>", "User")
+$env:TEAMBITION_TENANT_ID = Read-Host "请输入企业 ID"
+$secret = Read-Host "请输入 userToken" -AsSecureString
+$env:TEAMBITION_USER_TOKEN = [System.Net.NetworkCredential]::new("", $secret).Password
+# 从此终端运行脚本；不输出环境变量值
 ```
 
-macOS/Linux：
-```bash
-echo 'export TEAMBITION_TENANT_ID="<你的企业ID>"' >> ~/.bashrc
-echo 'export TEAMBITION_USER_TOKEN="<你的token>"' >> ~/.bashrc
-source ~/.bashrc
-```
+不要把真实凭证写进命令文本或终端历史。关闭终端只结束该进程中的环境变量，**不撤销 Token**，也不保证聊天、日志或其他副本消失；凭证有效期由 Teambition 管理，泄露后必须在平台撤销或轮换。
 
-保存后重启终端或新对话即可生效。
+**持久化使用（可选）**：
+
+- 在技能目录没有 `.env` 时才复制 `.env.example`，由用户本机编辑，填写企业 ID 和 Token；不要覆盖现有配置或提交真实 `.env`。
+- 也可由用户在系统账号级环境设置中保存。Windows User 作用域不需要管理员权限，新终端才继承变更；不要写入公共 shell 配置、共享文档或聊天历史。
+- 脚本支持系统环境变量及可选 `.env`，具体加载优先级以实现为准；不要同时配置不同账号的两套凭证。
 
 ### 配置检测
 
@@ -98,7 +83,7 @@ python scripts/teambition_bug.py check-config
 
 ```bash
 # 解析 Teambition 链接中的 projectId、taskId、viewId
-python scripts/teambition_bug.py parse-url --url "https://www.teambition.com/project/6a292e9b13e121404ffea8c5/tasks/view/6a292e9b8e598fd9e0fb2515"
+python scripts/teambition_bug.py parse-url --url "https://www.teambition.com/project/<projectId>/tasks/view/<viewId>"
 
 # 查询项目/产品详情
 python scripts/teambition_bug.py project --project-id "<projectId>"

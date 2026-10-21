@@ -1,7 +1,7 @@
 ---
 name: baota-panel
 description: |
-  通过宝塔 (BT) 面板 API 管理服务器资源。支持网站管理、Docker 编排、数据库运维及文件管理。具备自动绕过防火墙和 Session 嗅探能力。
+  通过宝塔 (BT) 面板 API 管理服务器资源。支持网站管理、Docker 编排、数据库运维及文件管理。支持经授权的计划任务代理和面板登录态接口。
   Use when: (1) 需要管理宝塔面板上的网站 (2) 需要管理 Docker 容器和编排 (3) 需要管理数据库 (4) 需要远程操作服务器文件
 ---
 
@@ -28,8 +28,8 @@ npx skills add ayflying/ai-skills --skill baota-panel
 
 ## 核心亮点
 
-- **稳健模式 (Robust Execution)**：当普通 Shell 接口被防火墙拦截时，自动切换至计划任务代理模式执行，确保 100% 命令送达。
-- **Session 嗅探 (Socket Support)**：自动从服务器本地获取 `x-http-token`，支持调用宝塔内部的 Socket/Model 接口（如 Docker Compose 编排）。
+- **计划任务代理**：Shell 空响应且显式授权 `allow_crontab_fallback=True` 时，才尝试创建、执行并清理临时计划任务。空响应不等于防火墙拦截，代理不保证成功。
+- **登录态接口**：部分 Docker 接口依赖 `x-http-token`。默认不读服务器登录态；取得用户授权后才设置 `allow_session_access=True`。受面板版本、权限和会话有效期限制。
 - **全能管理**：覆盖网站、FTP、数据库、Docker、文件系统及系统监控。
 
 ## 常用命令示例
@@ -39,18 +39,18 @@ npx skills add ayflying/ai-skills --skill baota-panel
 python scripts/bt_api.py
 ```
 
-### 2. Docker Compose 部署 (稳健模式)
+### 2. Docker Compose 部署
 ```python
 from scripts.bt_api import BTPanelAPI
 api = BTPanelAPI(url, key)
 
-# 即使有防火墙拦截，也能稳定执行
-api.docker_compose("/www/docker/myapp", "up -d")
+# 确认目标、部署影响与授权后执行；默认不使用计划任务代理
+api.docker_compose("/www/docker/myapp", "up")
 ```
 
 ### 3. 删除容器编排
 ```python
-# 获取项目 ID 后执行删除
+# 确认项目 ID、删除影响并取得用户明确授权后执行删除
 api.delete_compose_project(1)
 ```
 
@@ -64,3 +64,6 @@ api.delete_compose_project(1)
 
 ## 安全红线
 - **严禁擅自执行删除操作**。在删除站点、数据库、编排项目或清空回收站前，必须获得用户明确授权。
+
+- 执行 Shell、部署、读取登录态或改变安全策略前确认授权范围；接口拒绝时不得自行绕过安全策略。
+- API Key、会话及业务响应不得写入日志或提交仓库。

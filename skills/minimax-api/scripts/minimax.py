@@ -4,10 +4,16 @@ MiniMax API 核心脚本
 提供文本生成、语音合成、语音克隆等常用功能
 """
 
-import os
-import sys
-import json
 import argparse
+import asyncio
+import json
+import os
+from pathlib import Path
+import ssl
+import sys
+import tempfile
+from urllib.parse import urlsplit
+
 import requests
 
 try:
@@ -18,6 +24,25 @@ except ImportError:
     pass
 
 DEFAULT_HOST = "https://api.minimaxi.com"
+DOWNLOAD_TIMEOUT = (10, 60)
+
+
+def _response_json(response):
+    """校验 HTTP 和业务状态，并关闭已读取的响应。"""
+    try:
+        if 300 <= response.status_code < 400:
+            raise requests.HTTPError("接口重定向已拒绝，请直接配置可信接口地址", response=response)
+        response.raise_for_status()
+        result = response.json()
+        if not isinstance(result, dict):
+            raise ValueError("接口返回格式无效")
+        status = result.get("base_resp") or {}
+        if status.get("status_code", 0) not in (0, "0"):
+            raise ValueError("接口返回业务错误")
+        return result
+    finally:
+        response.close()
+
 
 
 class MiniMaxAPI:
@@ -25,7 +50,7 @@ class MiniMaxAPI:
         self.api_key = api_key or os.environ.get("MINIMAX_API_KEY")
         self.host = host or os.environ.get("MINIMAX_API_HOST", DEFAULT_HOST)
         if not self.api_key:
-            raise ValueError("MINIMAX_API_KEY is required")
+            raise ValueError("缺少 MINIMAX_API_KEY，请在本机环境变量或 .env 中配置")
 
     def _headers(self, extra=None):
         headers = {"Authorization": f"Bearer {self.api_key}"}
@@ -46,9 +71,9 @@ class MiniMaxAPI:
                 "messages": [{"role": "user", "content": message}],
             },
             timeout=60,
+            allow_redirects=False,
         )
-        response.raise_for_status()
-        return response.json()
+        return _response_json(response)
 
     def tts(self, text, model="speech-02-hd", voice_id=None, stream=False):
         """语音合成"""
@@ -56,10 +81,9 @@ class MiniMaxAPI:
         if voice_id:
             data["voice_setting"] = {"voice_id": voice_id}
         response = requests.post(
-            f"{self.host}/v1/t2a_v2", headers=self._headers(), json=data, timeout=30
+            f"{self.host}/v1/t2a_v2", headers=self._headers(), json=data, timeout=30, allow_redirects=False
         )
-        response.raise_for_status()
-        return response.json()
+        return _response_json(response)
 
     def voice_clone_upload_file(self, file_path):
         """上传克隆音频文件 (获取 file_id)"""
@@ -70,9 +94,9 @@ class MiniMaxAPI:
                 data={"purpose": "voice_clone"},
                 files={"file": f},
                 timeout=30,
+                allow_redirects=False,
             )
-        response.raise_for_status()
-        return response.json()
+        return _response_json(response)
 
     def voice_clone_upload_prompt(self, file_path):
         """上传示例音频文件 (增强克隆效果)"""
@@ -83,9 +107,9 @@ class MiniMaxAPI:
                 data={"purpose": "prompt_audio"},
                 files={"file": f},
                 timeout=30,
+                allow_redirects=False,
             )
-        response.raise_for_status()
-        return response.json()
+        return _response_json(response)
 
     def voice_clone(
         self,
@@ -113,9 +137,9 @@ class MiniMaxAPI:
             headers=self._headers({"Content-Type": "application/json"}),
             json=payload,
             timeout=60,
+            allow_redirects=False,
         )
-        response.raise_for_status()
-        return response.json()
+        return _response_json(response)
 
     async def tts_websocket(
         self,
@@ -129,69 +153,82 @@ class MiniMaxAPI:
         bitrate=128000,
         audio_format="mp3",
         output_path=None,
+        recv_timeout=30,
+        total_timeout=300,
     ):
         """WebSocket 语音合成 (流式)"""
-        import websockets
-        import ssl
+        if recv_timeout <= 0 or total_timeout <= 0:
+            raise ValueError("超时必须大于 0")
 
-        url = "wss://api.minimaxi.com/ws/v1/t2a_v2"
+        # 证书库加载是同步操作，先完成后再开始计算网络任务超时。
         ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
 
-        async with websockets.connect(
-            url, additional_headers=self._headers(), ssl=ssl_context
-        ) as ws:
-            connected = json.loads(await ws.recv())
-            if connected.get("event") != "connected_success":
-                raise Exception("WebSocket 连接失败")
+        async def synthesize():
+            import websockets
 
-            await ws.send(
-                json.dumps(
-                    {
-                        "event": "task_start",
-                        "model": model,
-                        "voice_setting": {
-                            "voice_id": voice_id,
-                            "speed": speed,
-                            "vol": vol,
-                            "pitch": pitch,
-                            "english_normalization": False,
-                        },
-                        "audio_setting": {
-                            "sample_rate": sample_rate,
-                            "bitrate": bitrate,
-                            "format": audio_format,
-                            "channel": 1,
-                        },
-                    }
+            url = "wss://api.minimaxi.com/ws/v1/t2a_v2"
+
+            async with websockets.connect(
+                url, additional_headers=self._headers(), ssl=ssl_context,
+                open_timeout=min(recv_timeout, total_timeout), close_timeout=5
+            ) as ws:
+                connected = json.loads(await asyncio.wait_for(ws.recv(), timeout=recv_timeout))
+                if connected.get("event") != "connected_success":
+                    raise ValueError("WebSocket 连接失败")
+
+                await ws.send(
+                    json.dumps(
+                        {
+                            "event": "task_start",
+                            "model": model,
+                            "voice_setting": {
+                                "voice_id": voice_id,
+                                "speed": speed,
+                                "vol": vol,
+                                "pitch": pitch,
+                                "english_normalization": False,
+                            },
+                            "audio_setting": {
+                                "sample_rate": sample_rate,
+                                "bitrate": bitrate,
+                                "format": audio_format,
+                                "channel": 1,
+                            },
+                        }
+                    )
                 )
-            )
 
-            start_resp = json.loads(await ws.recv())
-            if start_resp.get("event") != "task_started":
-                raise Exception(f"任务启动失败: {start_resp}")
+                start_resp = json.loads(await asyncio.wait_for(ws.recv(), timeout=recv_timeout))
+                if start_resp.get("event") != "task_started":
+                    raise ValueError("语音任务启动失败")
 
-            audio_data = b""
-            await ws.send(json.dumps({"event": "task_continue", "text": text}))
+                audio_data = b""
+                await ws.send(json.dumps({"event": "task_continue", "text": text}))
 
-            while True:
-                response = json.loads(await ws.recv())
-                if "data" in response and "audio" in response["data"]:
-                    audio_hex = response["data"]["audio"]
-                    if audio_hex:
-                        audio_data += bytes.fromhex(audio_hex)
-                if response.get("is_final"):
-                    break
+                while True:
+                    response = json.loads(await asyncio.wait_for(ws.recv(), timeout=recv_timeout))
+                    if (response.get("base_resp") or {}).get("status_code", 0) not in (0, "0"):
+                        raise ValueError("语音任务返回业务错误")
+                    if "data" in response and "audio" in response["data"]:
+                        audio_hex = response["data"]["audio"]
+                        if audio_hex:
+                            audio_data += bytes.fromhex(audio_hex)
+                    if response.get("is_final"):
+                        break
 
-            await ws.send(json.dumps({"event": "task_finish"}))
+                await ws.send(json.dumps({"event": "task_finish"}))
 
-            if output_path:
-                with open(output_path, "wb") as f:
-                    f.write(audio_data)
-                print(f"Audio saved to {output_path}")
+                if not audio_data:
+                    raise ValueError("语音任务未返回音频")
 
-            return audio_data
+                if output_path:
+                    with open(output_path, "wb") as f:
+                        f.write(audio_data)
+                    print(f"音频已保存到 {output_path}")
+
+                return audio_data
+
+        return await asyncio.wait_for(synthesize(), timeout=total_timeout)
 
     def image_generate(self, prompt, model="image-01", aspect_ratio="1:1"):
         """文生图 (Text-to-Image)"""
@@ -200,9 +237,9 @@ class MiniMaxAPI:
             headers=self._headers(),
             json={"model": model, "prompt": prompt, "aspect_ratio": aspect_ratio},
             timeout=60,
+            allow_redirects=False,
         )
-        response.raise_for_status()
-        return response.json()
+        return _response_json(response)
 
     def image_i2i(
         self,
@@ -254,9 +291,9 @@ class MiniMaxAPI:
             headers=self._headers(),
             json=data,
             timeout=60,
+            allow_redirects=False,
         )
-        response.raise_for_status()
-        return response.json()
+        return _response_json(response)
 
     def video_generate(
         self,
@@ -300,9 +337,9 @@ class MiniMaxAPI:
             headers=self._headers(),
             json=data,
             timeout=30,
+            allow_redirects=False,
         )
-        response.raise_for_status()
-        return response.json()
+        return _response_json(response)
 
     def video_query(self, task_id):
         """查询视频生成状态"""
@@ -310,9 +347,9 @@ class MiniMaxAPI:
             f"{self.host}/v1/video_generation/{task_id}",
             headers=self._headers(),
             timeout=30,
+            allow_redirects=False,
         )
-        response.raise_for_status()
-        return response.json()
+        return _response_json(response)
 
     def music_generate(
         self,
@@ -350,56 +387,63 @@ class MiniMaxAPI:
             headers=self._headers(),
             json=data,
             timeout=60,
+            allow_redirects=False,
         )
-        response.raise_for_status()
-        return response.json()
+        return _response_json(response)
+
+
+def _download_file(url, output_path):
+    """仅下载 HTTP(S) 媒体；完整下载后替换目标，失败保留原文件。"""
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.hostname or parts.username or parts.password:
+        raise ValueError("媒体下载地址无效")
+    destination = Path(output_path)
+    temporary = None
+    try:
+        with requests.get(url, timeout=DOWNLOAD_TIMEOUT, stream=True) as response:
+            response.raise_for_status()
+            with tempfile.NamedTemporaryFile(dir=destination.parent, delete=False) as handle:
+                temporary = Path(handle.name)
+                size = 0
+                for chunk in response.iter_content(chunk_size=65536):
+                    if chunk:
+                        handle.write(chunk)
+                        size += len(chunk)
+                if not size:
+                    raise ValueError("媒体下载内容为空")
+            temporary.replace(destination)
+            temporary = None
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    print(f"已保存到 {output_path}")
 
 
 def _download_image(result, output_path=None):
-    """下载图片到本地"""
+    """下载图片到本地；多图不覆盖同一输出文件。"""
     image_urls = result.get("data", {}).get("image_urls", [])
     if not image_urls:
-        print("No image URLs in response", file=sys.stderr)
-        return
-
+        raise ValueError("响应中没有图片下载地址")
     for i, url in enumerate(image_urls):
-        ext = "jpg"
-        if ".png" in url:
-            ext = "png"
-        path = output_path or f"output_{i}.{ext}"
-        print(f"Downloading to {path}...")
-        resp = requests.get(url)
-        resp.raise_for_status()
-        with open(path, "wb") as f:
-            f.write(resp.content)
-        print(f"Saved to {path}")
+        ext = "png" if urlsplit(url).path.lower().endswith(".png") else "jpg"
+        path = Path(output_path or f"output_{i}.{ext}")
+        if output_path and len(image_urls) > 1:
+            path = path.with_name(f"{path.stem}_{i}{path.suffix}")
+        _download_file(url, path)
 
 
 def _download_music(result, output_path=None, audio_format="mp3"):
-    """下载音乐到本地"""
+    """下载音乐到本地；非 URL 内容显式失败。"""
     data = result.get("data", {})
     audio_url = data.get("audio_url") or data.get("audio")
     if not audio_url:
-        print("No audio URL in response", file=sys.stderr)
-        return
-    if not audio_url.startswith("http"):
-        print(
-            "Audio is hex-encoded, not a URL. Output format must be url.",
-            file=sys.stderr,
-        )
-        return
-    path = output_path or f"output.{audio_format}"
-    print(f"Downloading to {path}...")
-    resp = requests.get(audio_url)
-    resp.raise_for_status()
-    with open(path, "wb") as f:
-        f.write(resp.content)
-    print(f"Saved to {path}")
+        raise ValueError("响应中没有音频下载地址")
+    _download_file(audio_url, output_path or f"output.{audio_format}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="MiniMax API 工具")
-    subparsers = parser.add_subparsers(dest="command", help="可用命令")
+    subparsers = parser.add_subparsers(dest="command", help="可用命令", required=True)
 
     chat = subparsers.add_parser("chat", help="文本对话")
     chat.add_argument("message", help="对话消息")
@@ -503,10 +547,13 @@ def main():
     tts_ws.add_argument("--sample-rate", type=int, default=32000, help="采样率")
     tts_ws.add_argument("--output", "-o", help="保存路径")
 
+    tts_ws.add_argument("--recv-timeout", type=float, default=30, help="单次接收超时秒数")
+    tts_ws.add_argument("--total-timeout", type=float, default=300, help="语音任务总超时秒数")
+
     args = parser.parse_args()
-    client = MiniMaxAPI()
 
     try:
+        client = MiniMaxAPI()
         if args.command == "chat":
             result = client.text_chat(args.message, args.model)
             content = result.get("content", [])
@@ -538,8 +585,6 @@ def main():
             print(json.dumps(result, indent=2, ensure_ascii=False))
 
         elif args.command == "tts-ws":
-            import asyncio
-
             asyncio.run(
                 client.tts_websocket(
                     text=args.text,
@@ -551,6 +596,8 @@ def main():
                     bitrate=args.bitrate,
                     sample_rate=args.sample_rate,
                     output_path=args.output,
+                    recv_timeout=args.recv_timeout,
+                    total_timeout=args.total_timeout,
                 )
             )
 
@@ -630,15 +677,29 @@ def main():
         else:
             parser.print_help()
 
-    except requests.exceptions.HTTPError as e:
-        print(
-            f"API 错误: {e.response.status_code} - {e.response.text}", file=sys.stderr
-        )
-        sys.exit(1)
-    except Exception as e:
-        print(f"错误: {str(e)}", file=sys.stderr)
-        sys.exit(1)
+    except requests.exceptions.HTTPError as exc:
+        status = exc.response.status_code if exc.response is not None else "未知"
+        print(f"API 请求失败，HTTP 状态码：{status}；请检查权限和服务状态", file=sys.stderr)
+        return 1
+    except (requests.exceptions.Timeout, asyncio.TimeoutError):
+        print("请求超时，请检查网络或调整超时参数", file=sys.stderr)
+        return 1
+    except requests.exceptions.RequestException:
+        print("网络请求失败，请检查服务地址、证书和连接", file=sys.stderr)
+        return 1
+    except ImportError:
+        print("缺少所需依赖，请按技能说明安装", file=sys.stderr)
+        return 1
+    except Exception:
+        # 不回显第三方异常、响应或签名下载地址，避免凭证泄露。
+        if not os.environ.get("MINIMAX_API_KEY"):
+            message = "缺少 MINIMAX_API_KEY，请在本机环境变量或 .env 中配置"
+        else:
+            message = "操作失败，请检查输入、响应格式及输出目录权限"
+        print(f"错误：{message}", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

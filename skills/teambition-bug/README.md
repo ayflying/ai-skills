@@ -12,11 +12,10 @@ npx skills add ayflying/ai-skills --skill teambition-bug
 
 ```bash
 cd skills/teambition-bug
-cp .env.example .env
 pip install -r requirements.txt
 ```
 
-编辑 `.env`，填入个人账号 token 和企业 ID。不要把真实 `.env` 提交到 Git。
+优先由用户在本机安全终端设置环境变量，临时安全输入方法见 [配置引导](SKILL.md#安全配置方式)。需要持久化时，仅在 `.env` 不存在时复制 `.env.example` 并在本机编辑；不要覆盖已有配置、向对话发送 Token 或把真实 `.env` 提交到 Git。关闭终端或对话不会撤销 Token，泄露后须在平台撤销或轮换。
 
 最小配置：
 
@@ -35,7 +34,7 @@ TEAMBITION_TENANT_ID=your_organization_id
 ## 示例
 
 ```bash
-python scripts/teambition_bug.py parse-url --url "https://www.teambition.com/project/6a292e9b13e121404ffea8c5/tasks/view/6a292e9b8e598fd9e0fb2515"
+python scripts/teambition_bug.py parse-url --url "https://www.teambition.com/project/<projectId>/tasks/view/<viewId>"
 python scripts/teambition_bug.py project --project-id "<projectId>"
 python scripts/teambition_bug.py search --project-id "<projectId>" --tql "content CONTAIN \"登录\""
 python scripts/teambition_bug.py context --task-id "<taskId>"

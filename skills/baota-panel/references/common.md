@@ -39,8 +39,7 @@ request_token = hashlib.md5(token_str.encode('utf-8')).hexdigest()
 ```json
 {
   "status": true,
-  "msg": "操作成功",
-  ... (其他数据)
+  "msg": "操作成功"
 }
 ```
 
@@ -51,3 +50,9 @@ request_token = hashlib.md5(token_str.encode('utf-8')).hexdigest()
   "msg": "错误描述信息"
 }
 ```
+
+## 5. 证书、错误与授权
+
+默认校验 HTTPS 证书，可通过 `BT_CA_BUNDLE` 或构造器 `ca_bundle` 指定已核验的可信 CA 文件，不支持静默跳过校验。请求超时为 30 秒，非 2xx、网络错误及无效 JSON 返回 `status: false`；错误不回显原始响应或凭证。成功 JSON 保持上游结构。
+
+`request()` 不修改调用方参数。登录态文件读取和计划任务代理分别要求 `allow_session_access=True`、`allow_crontab_fallback=True`，只能在取得对应授权后开启，不能绕过安全策略。

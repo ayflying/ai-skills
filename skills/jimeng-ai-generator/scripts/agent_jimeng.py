@@ -11,10 +11,10 @@ import time
 import random
 import json
 
-# 配置
-BROWSER_PROFILE = "D:/git/ai-skills/skills/jimeng-ai-generator/browser-profile"
-OUTPUT_DIR = "D:/git/ai-skills/skills/jimeng-ai-generator/outputs"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+from local_support import BROWSER_PROFILE as PROFILE_PATH, OUTPUT_DIR as OUTPUT_PATH, run_browser_command
+
+BROWSER_PROFILE = str(PROFILE_PATH)
+OUTPUT_DIR = str(OUTPUT_PATH)
 
 # 随机提示词池
 RANDOM_PROMPTS = [
@@ -38,22 +38,7 @@ RANDOM_PROMPTS = [
 
 def run(cmd_list, timeout=30):
     """执行agent-browser命令"""
-    cmd_str = "agent-browser " + " ".join(cmd_list)
-    try:
-        result = subprocess.run(
-            cmd_str,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            cwd=os.path.dirname(BROWSER_PROFILE),
-        )
-        return result.stdout + result.stderr
-    except subprocess.TimeoutExpired:
-        return ""
-    except Exception as e:
-        print(f"命令执行失败: {e}")
-        return ""
+    return run_browser_command(cmd_list, timeout=timeout)
 
 
 def wait(seconds=3):
@@ -67,6 +52,8 @@ def auto_generate(prompt=None, model="4.1", wait_seconds=60):
     print("即梦AI自动生成工具 (agent-browser)")
     print("=" * 60)
 
+    OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
+    PROFILE_PATH.mkdir(parents=True, exist_ok=True)
     # 使用已保存的登录状态
     state_file = os.path.join(BROWSER_PROFILE, "jimeng_vip.json")
 
